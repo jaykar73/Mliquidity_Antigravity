@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="backtest">
+
+    <insert id="insertBacktestRun">
+        INSERT INTO backtest_run (strategy_version, period_start, period_end, costs_json, metrics_json, status, created_at)
+        VALUES (#{strategy_version}, #{period_start}, #{period_end}, #{costs_json}, '{}', 'RUNNING', datetime('now'))
+    </insert>
+
+    <select id="selectBacktestResults">
+        SELECT br.id, br.strategy_version, br.period_start, br.period_end,
+               br.costs_json, br.metrics_json, br.status, br.created_at
+        FROM backtest_run br
+        ORDER BY br.created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <insert id="insertBacktestTrade">
+        INSERT INTO backtest_trade (run_id, trade_date, symbol, side, quantity, price, fee)
+        VALUES (#{run_id}, #{trade_date}, #{symbol}, #{side}, #{quantity}, #{price}, #{fee})
+    </insert>
+
+    <select id="selectTradeLog">
+        SELECT bt.id, bt.trade_date, bt.symbol, bt.side, bt.quantity, bt.price, bt.fee
+        FROM backtest_trade bt
+        WHERE bt.run_id = #{run_id}
+        ORDER BY bt.trade_date
+    </select>
+
+</mapper>

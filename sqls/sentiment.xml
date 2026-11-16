@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="sentiment">
+
+    <select id="selectFearGreedScore">
+        SELECT io.value AS score, io.observation_date
+        FROM indicator_catalog ic
+        JOIN indicator_observation io ON ic.id = io.indicator_id
+        WHERE ic.code = 'CNN_FG'
+        ORDER BY io.observation_date DESC
+        LIMIT 8
+    </select>
+
+    <select id="selectFGComponents">
+        SELECT ic.code, ic.name, io.value, io.observation_date
+        FROM indicator_catalog ic
+        JOIN indicator_observation io ON ic.id = io.indicator_id
+        WHERE ic.code IN ('MARKET_MOMENTUM', 'STOCK_PRICE_STRENGTH', 'STOCK_PRICE_BREADTH', 'PUT_CALL_RATIO', 'VIX', 'JUNK_BOND_DEMAND', 'SAFE_HAVEN_DEMAND')
+          AND io.observation_date = (
+              SELECT MAX(io2.observation_date)
+              FROM indicator_observation io2
+              WHERE io2.indicator_id = ic.id
+          )
+        ORDER BY ic.id
+    </select>
+
+    <select id="selectFGTrend">
+        SELECT io.observation_date, io.value AS score
+        FROM indicator_catalog ic
+        JOIN indicator_observation io ON ic.id = io.indicator_id
+        WHERE ic.code = 'CNN_FG'
+        ORDER BY io.observation_date
+    </select>
+
+</mapper>

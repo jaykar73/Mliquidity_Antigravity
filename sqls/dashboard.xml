@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="dashboard">
+
+    <select id="selectKPI">
+        SELECT ic.code, ic.name, ic.unit,
+               curr.value AS value,
+               prev.value AS prev_value,
+               curr.observation_date AS observation_date
+        FROM indicator_catalog ic
+        JOIN indicator_observation curr ON ic.id = curr.indicator_id
+            AND curr.observation_date = (
+                SELECT MAX(o1.observation_date) FROM indicator_observation o1 WHERE o1.indicator_id = ic.id
+            )
+        LEFT JOIN indicator_observation prev ON ic.id = prev.indicator_id
+            AND prev.observation_date = (
+                SELECT MAX(o2.observation_date) FROM indicator_observation o2
+                WHERE o2.indicator_id = ic.id AND o2.observation_date &lt; curr.observation_date
+            )
+        WHERE ic.code IN ('FED_NET_LIQ', 'M2_YOY', 'FORWARD_EPS', 'FORWARD_PER', 'CNN_FG', 'US10Y')
+        ORDER BY ic.id
+    </select>
+
+    <select id="selectChartData">
+        SELECT mp.trade_date,
+               mp.close AS ndx_close,
+               liq.value AS fed_net_liq,
+               per.value AS forward_per
+        FROM market_price mp
+        LEFT JOIN indicator_observation liq
+            ON liq.indicator_id = (SELECT id FROM indicator_catalog WHERE code = 'FED_NET_LIQ')
+            AND liq.observation_date = mp.trade_date
+        LEFT JOIN indicator_observation per
+            ON per.indicator_id = (SELECT id FROM indicator_catalog WHERE code = 'FORWARD_PER')
+            AND per.observation_date = mp.trade_date
+        WHERE mp.symbol = :symbol
+        ORDER BY mp.trade_date
+    </select>
+
+    <select id="selectSignalScore">
+        SELECT ss.asof_date, ss.score, ss.recommendation, ss.features_json, ss.data_quality,
+               sd.name AS strategy_name
+        FROM signal_snapshot ss
+        JOIN strategy_definition sd ON ss.strategy_id = sd.id
+        WHERE sd.enabled = 1
+        ORDER BY ss.asof_date DESC
+        LIMIT 1
+    </select>
+
+</mapper>

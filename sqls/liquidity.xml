@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="liquidity">
+
+    <select id="selectLiquidityKPI">
+        SELECT ic.code, ic.name, ic.unit,
+               curr.value AS value,
+               prev.value AS prev_value,
+               curr.observation_date AS observation_date
+        FROM indicator_catalog ic
+        JOIN indicator_observation curr ON ic.id = curr.indicator_id
+            AND curr.observation_date = (
+                SELECT MAX(o1.observation_date) FROM indicator_observation o1 WHERE o1.indicator_id = ic.id
+            )
+        LEFT JOIN indicator_observation prev ON ic.id = prev.indicator_id
+            AND prev.observation_date = (
+                SELECT MAX(o2.observation_date) FROM indicator_observation o2
+                WHERE o2.indicator_id = ic.id AND o2.observation_date &lt; curr.observation_date
+            )
+        WHERE ic.code IN ('FED_NET_LIQ', 'M2_YOY', 'MMMFFAQ027S', 'WRESBAL')
+        ORDER BY ic.id
+    </select>
+
+    <select id="selectFedLiquidity">
+        SELECT io.observation_date,
+               SUM(CASE WHEN ic.code = 'FED_NET_LIQ' THEN io.value ELSE 0 END) AS net_liquidity,
+               SUM(CASE WHEN ic.code = 'WALCL' THEN io.value ELSE 0 END) AS fed_balance,
+               SUM(CASE WHEN ic.code = 'WTREGEN' THEN io.value ELSE 0 END) AS tga,
+               SUM(CASE WHEN ic.code = 'RRPONTSYD' THEN io.value ELSE 0 END) AS rrp,
+               SUM(CASE WHEN ic.code = 'M2SL' THEN io.value ELSE 0 END) AS m2,
+               SUM(CASE WHEN ic.code = 'M2_YOY' THEN io.value ELSE 0 END) AS m2_yoy,
+               SUM(CASE WHEN ic.code = 'MMMFFAQ027S' THEN io.value ELSE 0 END) AS mmf,
+               SUM(CASE WHEN ic.code = 'WRESBAL' THEN io.value ELSE 0 END) AS reserves
+        FROM indicator_catalog ic
+        JOIN indicator_observation io ON ic.id = io.indicator_id
+        WHERE ic.code IN ('FED_NET_LIQ', 'WALCL', 'WTREGEN', 'RRPONTSYD', 'M2SL', 'M2_YOY', 'MMMFFAQ027S', 'WRESBAL')
+        GROUP BY io.observation_date
+        ORDER BY io.observation_date
+    </select>
+
+    <select id="selectLiquiditySummary">
+        SELECT ic.code, ic.name, ic.unit,
+               curr.value AS current_value,
+               prev.value AS previous_value,
+               curr.observation_date AS current_date,
+               prev.observation_date AS previous_date
+        FROM indicator_catalog ic
+        JOIN indicator_observation curr ON ic.id = curr.indicator_id
+            AND curr.observation_date = (
+                SELECT MAX(o1.observation_date) FROM indicator_observation o1 WHERE o1.indicator_id = ic.id
+            )
+        LEFT JOIN indicator_observation prev ON ic.id = prev.indicator_id
+            AND prev.observation_date = (
+                SELECT MAX(o2.observation_date) FROM indicator_observation o2
+                WHERE o2.indicator_id = ic.id AND o2.observation_date &lt; curr.observation_date
+            )
+        WHERE ic.code IN ('FED_NET_LIQ', 'M2_YOY', 'MMMFFAQ027S', 'WRESBAL')
+        ORDER BY ic.id
+    </select>
+
+    <insert id="insertIndicator">
+        INSERT OR REPLACE INTO indicator_observation (indicator_id, observation_date, published_at, value, source_url, collected_at)
+        VALUES (
+            (SELECT id FROM indicator_catalog WHERE code = #{code}),
+            #{observation_date},
+            #{published_at},
+            #{value},
+            #{source_url},
+            datetime('now')
+        )
+    </insert>
+
+</mapper>

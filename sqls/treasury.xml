@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="treasury">
+
+    <select id="selectTreasuryKPI">
+        SELECT ic.code, ic.name, ic.unit,
+               curr.value AS value,
+               prev.value AS prev_value,
+               curr.observation_date AS observation_date
+        FROM indicator_catalog ic
+        JOIN indicator_observation curr ON ic.id = curr.indicator_id
+            AND curr.observation_date = (
+                SELECT MAX(o1.observation_date) FROM indicator_observation o1 WHERE o1.indicator_id = ic.id
+            )
+        LEFT JOIN indicator_observation prev ON ic.id = prev.indicator_id
+            AND prev.observation_date = (
+                SELECT MAX(o2.observation_date) FROM indicator_observation o2
+                WHERE o2.indicator_id = ic.id AND o2.observation_date &lt; curr.observation_date
+            )
+        WHERE ic.code IN ('US05Y', 'US10Y', 'US30Y', 'US10Y_US05Y_SPREAD', 'US30Y_US10Y_SPREAD')
+        ORDER BY ic.id
+    </select>
+
+    <select id="selectTreasuryTrend">
+        SELECT io.observation_date, io.value, ic.code
+        FROM indicator_catalog ic
+        JOIN indicator_observation io ON ic.id = io.indicator_id
+        WHERE ic.code IN ('US05Y', 'US10Y', 'US30Y')
+        ORDER BY io.observation_date, ic.code
+    </select>
+
+    <select id="selectSpreadData">
+        SELECT io.observation_date, io.value, ic.code
+        FROM indicator_catalog ic
+        JOIN indicator_observation io ON ic.id = io.indicator_id
+        WHERE ic.code IN ('US10Y_US05Y_SPREAD', 'US30Y_US10Y_SPREAD')
+        ORDER BY io.observation_date, ic.code
+    </select>
+
+    <select id="selectYieldCurve">
+        SELECT ic.code, ic.name, io.value, io.observation_date
+        FROM indicator_catalog ic
+        JOIN indicator_observation io ON ic.id = io.indicator_id
+        WHERE ic.code IN ('US3M', 'US1Y', 'US02Y', 'US05Y', 'US10Y', 'US30Y')
+          AND io.observation_date = (
+              SELECT MAX(io2.observation_date)
+              FROM indicator_observation io2
+              WHERE io2.indicator_id = ic.id
+          )
+        ORDER BY ic.id
+    </select>
+
+</mapper>

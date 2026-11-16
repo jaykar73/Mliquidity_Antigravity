@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="strategy">
+
+    <select id="selectStrategies">
+        SELECT sd.id, sd.name, sd.version, sd.params_json, sd.enabled, sd.created_at,
+               ss.score AS latest_score, ss.recommendation AS latest_recommendation, ss.asof_date AS latest_signal_date
+        FROM strategy_definition sd
+        LEFT JOIN signal_snapshot ss ON sd.id = ss.strategy_id
+            AND ss.asof_date = (
+                SELECT MAX(ss2.asof_date) FROM signal_snapshot ss2 WHERE ss2.strategy_id = sd.id
+            )
+        ORDER BY sd.created_at DESC
+    </select>
+
+    <select id="selectStrategyDetail">
+        SELECT sd.id, sd.name, sd.version, sd.params_json, sd.enabled, sd.created_at
+        FROM strategy_definition sd
+        WHERE sd.id = #{strategy_id}
+    </select>
+
+    <select id="selectSignalData">
+        SELECT ss.asof_date, ss.score, ss.recommendation, ss.features_json, ss.data_quality
+        FROM signal_snapshot ss
+        WHERE ss.strategy_id = #{strategy_id}
+        ORDER BY ss.asof_date DESC
+        LIMIT #{limit}
+    </select>
+
+    <insert id="insertStrategy">
+        INSERT INTO strategy_definition (name, version, params_json, enabled, created_at)
+        VALUES (#{name}, #{version}, #{params_json}, #{enabled}, datetime('now'))
+    </insert>
+
+    <update id="updateStrategy">
+        UPDATE strategy_definition
+        SET name = #{name},
+            version = #{version},
+            params_json = #{params_json},
+            enabled = #{enabled}
+        WHERE id = #{id}
+    </update>
+
+</mapper>

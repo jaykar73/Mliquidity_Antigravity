@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="earnings">
+
+    <select id="selectEpsKPI">
+        SELECT ic.code, ic.name, ic.unit, io.value, io.observation_date
+        FROM indicator_catalog ic
+        JOIN indicator_observation io ON ic.id = io.indicator_id
+        WHERE ic.code IN ('FORWARD_EPS', 'EPS_REV_3M', 'EPS_SURPRISE', 'EPS_GROWTH_YOY')
+          AND io.observation_date = (
+              SELECT MAX(io2.observation_date)
+              FROM indicator_observation io2
+              WHERE io2.indicator_id = ic.id
+          )
+        ORDER BY ic.id
+    </select>
+
+    <select id="selectEpsTrend">
+        SELECT ec.asof_date, ec.horizon, ec.estimated_eps, ec.provider
+        FROM earnings_consensus ec
+        WHERE ec.index_code = 'NDX'
+          AND ec.horizon = #{horizon}
+        ORDER BY ec.asof_date
+    </select>
+
+    <select id="selectEpsRevision">
+        SELECT curr.asof_date,
+               curr.estimated_eps AS current_eps,
+               prev_1m.estimated_eps AS eps_1m_ago,
+               prev_3m.estimated_eps AS eps_3m_ago
+        FROM earnings_consensus curr
+        LEFT JOIN earnings_consensus prev_1m
+            ON prev_1m.index_code = curr.index_code
+            AND prev_1m.horizon = curr.horizon
+            AND prev_1m.asof_date = date(curr.asof_date, '-1 month')
+        LEFT JOIN earnings_consensus prev_3m
+            ON prev_3m.index_code = curr.index_code
+            AND prev_3m.horizon = curr.horizon
+            AND prev_3m.asof_date = date(curr.asof_date, '-3 months')
+        WHERE curr.index_code = 'NDX'
+          AND curr.horizon = #{horizon}
+        ORDER BY curr.asof_date
+    </select>
+
+</mapper>

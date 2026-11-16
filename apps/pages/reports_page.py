@@ -1,0 +1,145 @@
+"""
+09. TQQQ Lab — 리포트 / 알림 페이지 UI (프리미엄 다크 테마)
+"""
+from nicegui import ui
+from conf.config import COLORS
+from utils.ui_theme import CARD_STYLE, page_header, section_title
+from apps.funcs.reports_func import (
+    get_reports,
+    get_alerts,
+    get_asset_signals,
+)
+
+
+def create_reports_page():
+    """리포트 / 알림 페이지 전체 레이아웃."""
+    reports = get_reports()
+    alerts = get_alerts()
+    signals = get_asset_signals()
+
+    with ui.column().classes("w-full gap-5 p-6"):
+        page_header(
+            "리포트 / 알림 (Reports & Alerts)",
+            "일/주간 자동 생성 시장 분석 리포트 · 조건별 투자 신호 실시간 알림 · 매크로 이벤트 캘린더",
+            icon="notifications_active",
+            badge_text="앱 알림 ON",
+            badge_color="#059669",
+        )
+
+        with ui.tabs().classes("w-full") as tabs:
+            tab_rep = ui.tab("시장 리포트")
+            tab_alt = ui.tab("투자 신호 알림")
+            tab_cal = ui.tab("이벤트 캘린더")
+            tab_set = ui.tab("설정")
+
+        with ui.tab_panels(tabs, value=tab_rep).classes("w-full"):
+            with ui.tab_panel(tab_rep).classes("p-0"):
+                with ui.row().classes("w-full gap-4 items-stretch no-wrap"):
+                    # 좌측: 최근 리포트
+                    with ui.column().classes("flex-1"):
+                        with ui.card().style(CARD_STYLE).classes("w-full h-full justify-between"):
+                            with ui.column().classes("w-full gap-3"):
+                                section_title("최근 리포트", f"{len(reports)}건 발행")
+                                for r in reports:
+                                    with ui.row().classes(
+                                        "w-full items-center justify-between p-4 rounded-xl"
+                                    ).style(
+                                        "background:rgba(15,23,42,0.55);border:1px solid rgba(148,163,184,0.12);"
+                                    ):
+                                        with ui.row().classes("items-center gap-3.5"):
+                                            with ui.element("div").style(
+                                                "width:40px;height:40px;border-radius:10px;"
+                                                "background:rgba(56,189,248,0.14);border:1px solid rgba(56,189,248,0.3);"
+                                                "display:flex;align-items:center;justify-content:center;"
+                                            ):
+                                                ui.icon("description", size="22px").style("color:#38bdf8;")
+                                            with ui.column().classes("gap-0.5"):
+                                                ui.label(r["title"]).style(
+                                                    "color:#f1f5f9;font-size:0.95rem;font-weight:700;"
+                                                )
+                                                ui.label(r["date"]).classes("num-mono").style(
+                                                    "color:#64748b;font-size:0.78rem;"
+                                                )
+                                        ui.button(
+                                            "PDF",
+                                            icon="download",
+                                            on_click=lambda t=r["title"]: ui.notify(f"'{t}' PDF 다운로드 완료", type="positive"),
+                                        ).props("outline dense color=info").classes("px-3 font-bold")
+
+                            ui.button(
+                                "리포트 자동 생성 설정",
+                                icon="schedule",
+                                on_click=lambda: ui.notify("매주 금요일 18:00 주간 리포트 자동 생성이 활성화되어 있습니다.", type="info"),
+                            ).props("outline color=primary").classes("w-full mt-4")
+
+                    # 우측: 투자 신호 알림
+                    with ui.column().classes("flex-1"):
+                        with ui.card().style(CARD_STYLE).classes("w-full h-full"):
+                            section_title("투자 신호 알림", "앱 ON", "rgba(16,185,129,0.18)", "#34d399")
+
+                            bell_colors = {
+                                "green":  ("#34d399", "rgba(16,185,129,0.14)", "rgba(16,185,129,0.3)"),
+                                "blue":   ("#38bdf8", "rgba(56,189,248,0.14)", "rgba(56,189,248,0.3)"),
+                                "yellow": ("#fbbf24", "rgba(245,158,11,0.14)", "rgba(245,158,11,0.3)"),
+                            }
+                            with ui.column().classes("w-full gap-3 mt-1"):
+                                for al in alerts:
+                                    b_fg, b_bg, b_bd = bell_colors.get(
+                                        al.get("color", "green"),
+                                        ("#34d399", "rgba(16,185,129,0.14)", "rgba(16,185,129,0.3)"),
+                                    )
+                                    with ui.row().classes(
+                                        "w-full items-center gap-3.5 p-4 rounded-xl"
+                                    ).style(
+                                        "background:rgba(15,23,42,0.55);border:1px solid rgba(148,163,184,0.12);"
+                                    ):
+                                        with ui.element("div").style(
+                                            f"width:40px;height:40px;border-radius:10px;background:{b_bg};border:1px solid {b_bd};"
+                                            "display:flex;align-items:center;justify-content:center;"
+                                        ):
+                                            ui.icon("notifications_active", size="22px").style(f"color:{b_fg};")
+                                        with ui.column().classes("gap-0.5 flex-1"):
+                                            ui.label(al["name"]).style(
+                                                f"color:{b_fg};font-size:0.95rem;font-weight:800;"
+                                            )
+                                            ui.label(f"{al['message']} ({al['triggered_at']})").style(
+                                                "color:#cbd5e1;font-size:0.84rem;"
+                                            )
+
+            with ui.tab_panel(tab_alt).classes("p-0"):
+                with ui.card().style(CARD_STYLE).classes("w-full"):
+                    section_title("자산군별 실시간 투자 신호 현황", "4대 자산")
+                    cols = [
+                        {"name": "asset",  "label": "자산",   "field": "asset",  "align": "left"},
+                        {"name": "signal", "label": "신호",   "field": "signal", "align": "center"},
+                        {"name": "score",  "label": "점수",   "field": "score",  "align": "right"},
+                        {"name": "reason", "label": "근거",   "field": "reason", "align": "left"},
+                    ]
+                    ui.table(columns=cols, rows=signals, row_key="asset").classes("w-full")
+
+            with ui.tab_panel(tab_cal).classes("p-0"):
+                with ui.card().style(CARD_STYLE).classes("w-full"):
+                    section_title("주요 매크로 & 실적 발표 캘린더", "Upcoming Events")
+                    cal_rows = [
+                        {"일자": "2026-11-12", "이벤트": "미국 10월 CPI 소비자물가지수 발표", "중요도": "높음"},
+                        {"일자": "2026-11-14", "이벤트": "연준 H.4.1 대차대조표 (WALCL) 주간 발표", "중요도": "중간"},
+                        {"일자": "2026-11-20", "이벤트": "NVIDIA (NVDA) 분기 실적 발표", "중요도": "높음"},
+                        {"일자": "2026-12-16", "이벤트": "12월 FOMC 기준금리 결정 및 점도표", "중요도": "높음"},
+                    ]
+                    cols = [
+                        {"name": k, "label": k, "field": k, "align": "left"}
+                        for k in ["일자", "이벤트", "중요도"]
+                    ]
+                    ui.table(columns=cols, rows=cal_rows, row_key="일자").classes("w-full")
+
+            with ui.tab_panel(tab_set).classes("p-0"):
+                with ui.card().style(CARD_STYLE).classes("w-full"):
+                    section_title("알림 채널 및 중복 방지 설정", "Alert Rules")
+                    for al in alerts:
+                        with ui.row().classes("w-full items-center justify-between py-3 px-3 rounded-lg mb-2").style(
+                            "background:rgba(15,23,42,0.5);border:1px solid rgba(148,163,184,0.1);"
+                        ):
+                            with ui.column().classes("gap-0"):
+                                ui.label(al["name"]).style("color:#f1f5f9;font-weight:700;")
+                                ui.label(al["condition"]).style("color:#94a3b8;font-size:0.8rem;")
+                            ui.switch(value=al["enabled"]).props("color=positive")

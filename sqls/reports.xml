@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="reports">
+
+    <select id="selectReports">
+        SELECT ss.asof_date AS report_date,
+               sd.name AS strategy_name,
+               ss.score, ss.recommendation,
+               ss.features_json, ss.data_quality
+        FROM signal_snapshot ss
+        JOIN strategy_definition sd ON ss.strategy_id = sd.id
+        ORDER BY ss.asof_date DESC
+        LIMIT #{limit}
+    </select>
+
+    <insert id="insertReport">
+        INSERT INTO signal_snapshot (asof_date, strategy_id, score, recommendation, features_json, data_quality)
+        VALUES (#{asof_date}, #{strategy_id}, #{score}, #{recommendation}, #{features_json}, #{data_quality})
+    </insert>
+
+    <select id="selectAlerts">
+        SELECT ar.id, ar.name, ar.condition_json, ar.channel, ar.enabled, ar.created_at,
+               ae.triggered_at AS last_triggered, ae.message AS last_message, ae.status AS last_status
+        FROM alert_rule ar
+        LEFT JOIN alert_event ae ON ar.id = ae.rule_id
+            AND ae.triggered_at = (
+                SELECT MAX(ae2.triggered_at) FROM alert_event ae2 WHERE ae2.rule_id = ar.id
+            )
+        ORDER BY ar.created_at DESC
+    </select>
+
+    <insert id="insertAlert">
+        INSERT INTO alert_rule (name, condition_json, channel, enabled, created_at)
+        VALUES (#{name}, #{condition_json}, #{channel}, #{enabled}, datetime('now'))
+    </insert>
+
+    <update id="updateAlert">
+        UPDATE alert_rule
+        SET name = #{name},
+            condition_json = #{condition_json},
+            channel = #{channel},
+            enabled = #{enabled}
+        WHERE id = #{id}
+    </update>
+
+</mapper>

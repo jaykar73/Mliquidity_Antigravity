@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="valuation">
+
+    <select id="selectPerKPI">
+        SELECT io.value AS forward_per,
+               io.observation_date,
+               io.source_url,
+               io.collected_at,
+               ic.provider,
+               ic.license_status,
+               avg_10y.avg_per AS avg_per_10y
+        FROM indicator_catalog ic
+        JOIN indicator_observation io ON ic.id = io.indicator_id
+        LEFT JOIN (
+            SELECT AVG(io2.value) AS avg_per
+            FROM indicator_catalog ic2
+            JOIN indicator_observation io2 ON ic2.id = io2.indicator_id
+            WHERE ic2.code = 'FORWARD_PER'
+              AND io2.observation_date &gt;= date('now', '-10 years')
+        ) avg_10y ON 1=1
+        WHERE ic.code = 'FORWARD_PER'
+        ORDER BY io.observation_date DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectPerTrend">
+        SELECT io.observation_date, io.value AS forward_per
+        FROM indicator_catalog ic
+        JOIN indicator_observation io ON ic.id = io.indicator_id
+        WHERE ic.code = 'FORWARD_PER'
+        ORDER BY io.observation_date
+    </select>
+
+    <select id="selectPerDistribution">
+        SELECT io.value AS forward_per, COUNT(*) AS frequency
+        FROM indicator_catalog ic
+        JOIN indicator_observation io ON ic.id = io.indicator_id
+        WHERE ic.code = 'FORWARD_PER'
+        GROUP BY ROUND(io.value, 0)
+        ORDER BY forward_per
+    </select>
+
+    <insert id="upsertIndicatorValue">
+        INSERT OR REPLACE INTO indicator_observation
+            (indicator_id, observation_date, published_at, value, vintage, source_url, collected_at)
+        VALUES (
+            (SELECT id FROM indicator_catalog WHERE code = #{code}),
+            #{observation_date},
+            #{published_at},
+            #{value},
+            'latest',
+            #{source_url},
+            datetime('now', 'localtime')
+        )
+    </insert>
+
+    <update id="updateCatalogSource">
+        UPDATE indicator_catalog
+        SET provider = #{provider},
+            license_status = #{license_status}
+        WHERE code = #{code}
+    </update>
+
+    <insert id="insertIngestionJob">
+        INSERT INTO ingestion_job (source, started_at, ended_at, status, rows_written, error)
+        VALUES (#{source}, #{started_at}, datetime('now', 'localtime'), #{status}, #{rows_written}, #{error})
+    </insert>
+
+</mapper>
