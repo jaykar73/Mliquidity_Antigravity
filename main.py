@@ -35,8 +35,9 @@ from apps.funcs.sentiment_func import get_fear_greed_score, get_fear_greed_compo
 from apps.funcs.valuation_func import get_valuation_kpi, sync_live_forward_per
 from utils.live_sync import sync_all_live_data_async
 
-# ── 글로벌 프리미엄 핀테크 CSS ─────────────────────────────────
+# ── 글로벌 프리미엄 핀테크 CSS (반응형 모바일/태블릿/PC 자동 대응) ──
 GLOBAL_CSS = """
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
@@ -62,10 +63,13 @@ body, .q-page, .nicegui-content {
     color: var(--text) !important;
     font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif !important;
     letter-spacing: -0.01em;
+    overflow-x: hidden !important;
 }
 
 .nicegui-content {
     padding: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
 }
 
 /* 스크롤바 커스텀 */
@@ -142,6 +146,7 @@ body, .q-page, .nicegui-content {
     border-radius: 14px !important;
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.45), inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
     transition: border-color 0.2s ease, transform 0.2s ease;
+    max-width: 100% !important;
 }
 .q-card:hover {
     border-color: rgba(56, 189, 248, 0.28) !important;
@@ -154,6 +159,7 @@ body, .q-page, .nicegui-content {
     border-radius: 12px !important;
     padding: 4px !important;
     min-height: 44px !important;
+    max-width: 100% !important;
 }
 .q-tab {
     border-radius: 8px !important;
@@ -184,6 +190,7 @@ body, .q-page, .nicegui-content {
     border: 1px solid rgba(148, 163, 184, 0.12) !important;
     border-radius: 10px !important;
     box-shadow: none !important;
+    overflow-x: auto !important;
 }
 .q-table th {
     background: rgba(15, 23, 42, 0.8) !important;
@@ -206,7 +213,149 @@ body, .q-page, .nicegui-content {
     font-family: 'JetBrains Mono', 'Pretendard', monospace;
     font-variant-numeric: tabular-nums;
 }
+
+/* ── 반응형 레이아웃 그리드 & 컨테이너 ───────────────────────── */
+.page-container {
+    width: 100%;
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.kpi-grid-6 {
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+    width: 100% !important;
+}
+.kpi-grid-5 {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+    width: 100% !important;
+}
+.kpi-grid-4 {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 16px !important;
+    width: 100% !important;
+}
+
+.responsive-row {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    width: 100% !important;
+}
+
+/* 태블릿 가로 & 소형 노트북 (1024px ~ 1279px) */
+@media (max-width: 1279px) {
+    .kpi-grid-6 {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+    .kpi-grid-5 {
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    }
+}
+
+/* 태블릿 세로 & 모바일 공통 (< 1024px) */
+@media (max-width: 1023px) {
+    .page-container {
+        padding: 16px !important;
+        gap: 14px !important;
+    }
+    .responsive-row {
+        flex-direction: column !important;
+        flex-wrap: wrap !important;
+        gap: 14px !important;
+    }
+    .responsive-row > div,
+    .responsive-row > .q-card {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        flex: 1 1 100% !important;
+    }
+    .kpi-grid-4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 12px !important;
+    }
+}
+
+/* 스마트폰 (< 640px) */
+@media (max-width: 639px) {
+    .page-container {
+        padding: 10px 12px !important;
+        gap: 12px !important;
+    }
+    .kpi-grid-6,
+    .kpi-grid-5,
+    .kpi-grid-4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 10px !important;
+    }
+    .kpi-card-box {
+        padding: 12px 13px !important;
+        border-radius: 12px !important;
+    }
+    .kpi-value-text {
+        font-size: 1.28rem !important;
+        margin: 4px 0 !important;
+    }
+    .page-header-title {
+        font-size: 1.12rem !important;
+    }
+    .page-header-sub {
+        font-size: 0.74rem !important;
+        line-height: 1.35 !important;
+    }
+    .q-card {
+        padding: 14px !important;
+        border-radius: 12px !important;
+    }
+    .q-tab {
+        padding: 0 11px !important;
+        font-size: 0.78rem !important;
+        min-height: 32px !important;
+    }
+    .echart-box {
+        height: 250px !important;
+    }
+    .echart-box-sm {
+        height: 190px !important;
+    }
+    .strategy-rule-row {
+        flex-wrap: wrap !important;
+        gap: 6px !important;
+    }
+    .strategy-rule-action {
+        width: 100% !important;
+        text-align: left !important;
+        padding-left: 4px !important;
+    }
+}
+
+/* 초소형 화면 (< 359px) */
+@media (max-width: 359px) {
+    .kpi-grid-6,
+    .kpi-grid-5,
+    .kpi-grid-4 {
+        grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+    }
+}
 </style>
+<script>
+window.addEventListener('resize', () => {
+    setTimeout(() => {
+        document.querySelectorAll('.nicegui-echart, [_echarts_instance_]').forEach(el => {
+            if (window.echarts) {
+                const inst = window.echarts.getInstanceByDom(el);
+                if (inst) inst.resize();
+            }
+        });
+    }, 120);
+});
+</script>
 """
 
 # ── 기능별 그룹핑된 사이드바 메뉴 정의 ──────────────────────────
@@ -314,8 +463,8 @@ def create_layout(current_path: str = "/"):
     eps_str = live_kpi["expected_eps"]["value"]
     eps_chg = live_kpi["expected_eps"]["change"]
 
-    # ── 좌측 사이드바 (기능별 4대 그룹핑) ──────────────────────
-    with ui.left_drawer(value=True, fixed=True).classes("q-pa-none").style("width: 256px;") as drawer:
+    # ── 좌측 사이드바 (PC: 고정 표시 / 스마트폰·태블릿 <1024px: 자동 슬라이드 오버레이) ──
+    with ui.left_drawer(fixed=True).props("breakpoint=1024 width=256").classes("q-pa-none") as drawer:
         with ui.column().classes("w-full h-full justify-between no-wrap"):
             with ui.column().classes("w-full q-pb-md"):
                 # 사이드바 상단 브랜드 배너
@@ -386,61 +535,76 @@ def create_layout(current_path: str = "/"):
                         "font-size:0.7rem;color:#64748b;margin-top:2px;"
                     )
 
-    # ── 상단 글래스모피즘 헤더 바 ──────────────────────────────
-    with ui.header().classes("q-px-lg q-py-sm"):
-        with ui.row().classes("w-full items-center justify-between no-wrap"):
-            # 좌측: 사이드바 토글 + 브레드크럼(현재 그룹 > 현재 메뉴)
-            with ui.row().classes("items-center gap-3"):
-                ui.button(icon="menu", on_click=drawer.toggle).props("flat dense round color=grey-4")
-                with ui.row().classes("items-center gap-2"):
-                    ui.label(grp_title).style("color:#64748b;font-size:0.82rem;font-weight:600;")
-                    ui.icon("chevron_right", size="16px").style("color:#475569;")
-                    ui.label(page_title).style("color:#f8fafc;font-size:0.9rem;font-weight:700;")
+    # ── 상단 글래스모피즘 헤더 바 (모바일/PC 반응형) ────────────
+    ticker_items = [
+        ("Fwd EPS", eps_str, eps_chg, True),
+        ("Fwd PER", per_str, per_chg, True),
+        ("CNN F&G", fg_str, fg_lbl, False),
+        ("US 10Y", us10_str, us10_chg, False),
+    ]
 
-            # 중앙: 실시간 미니 마켓 티커 바 (SQLite 실데이터 연동)
-            with ui.row().classes("items-center gap-4 px-4 py-1.5 rounded-full gt-sm").style(
-                "background:rgba(15,23,42,0.75);border:1px solid rgba(148,163,184,0.14);"
-            ):
-                for sym, val, chg, is_up in [
-                    ("Fwd EPS", eps_str, eps_chg, True),
-                    ("Fwd PER", per_str, per_chg, True),
-                    ("CNN F&G", fg_str, fg_lbl, False),
-                    ("US 10Y", us10_str, us10_chg, False),
-                ]:
-                    with ui.row().classes("items-center gap-1.5"):
-                        ui.label(sym).style("color:#64748b;font-size:0.74rem;font-weight:700;")
-                        ui.label(val).classes("num-mono").style("color:#f1f5f9;font-size:0.76rem;font-weight:700;")
-                        ui.label(chg).classes("num-mono").style(
-                            f"color:{'#34d399' if is_up else '#f87171'};font-size:0.72rem;font-weight:600;"
-                        )
+    with ui.header().classes("q-px-sm q-px-md-lg q-py-xs"):
+        with ui.column().classes("w-full gap-1"):
+            with ui.row().classes("w-full items-center justify-between no-wrap"):
+                # 좌측: 사이드바 토글 + 브레드크럼(현재 그룹 > 현재 메뉴)
+                with ui.row().classes("items-center gap-2 no-wrap"):
+                    ui.button(icon="menu", on_click=drawer.toggle).props("flat dense round color=grey-4")
+                    with ui.row().classes("items-center gap-1.5 no-wrap"):
+                        ui.label(grp_title).classes("gt-xs").style("color:#64748b;font-size:0.82rem;font-weight:600;")
+                        ui.icon("chevron_right", size="16px").classes("gt-xs").style("color:#475569;")
+                        ui.label(page_title).style("color:#f8fafc;font-size:0.9rem;font-weight:700;white-space:nowrap;")
 
-            # 우측: 실시간 데이터 연동 버튼 + 기준일
-            with ui.row().classes("items-center gap-3"):
-                async def _global_sync():
-                    sync_header_btn.props("loading")
-                    ui.notify("전체 지표(FRED 유동성·금리·주가·PER·공포탐욕) 실시간 수집 중...", type="info")
-                    res = await sync_all_live_data_async()
-                    sync_header_btn.props(remove="loading")
-                    if res.get("ok"):
-                        ui.notify(
-                            f"실시간 연동 완료 ({res['rows_written']}건 갱신): {res['summary']}",
-                            type="positive",
-                        )
-                        ui.navigate.reload()
-                    else:
-                        ui.notify(res.get("message", "연동 실패"), type="warning")
-
-                sync_header_btn = ui.button("실시간 데이터 연동", icon="sync", on_click=_global_sync).props(
-                    "unelevated dense size=sm"
-                ).style(
-                    "background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;"
-                    "font-weight:700;padding:5px 12px;border-radius:8px;"
-                )
-                with ui.row().classes("items-center gap-1.5 px-2.5 py-1 rounded-md").style(
-                    "background:rgba(255,255,255,0.04);border:1px solid rgba(148,163,184,0.12);"
+                # 중앙(PC 전용): 실시간 미니 마켓 티커 바
+                with ui.row().classes("items-center gap-4 px-4 py-1.5 rounded-full gt-sm no-wrap").style(
+                    "background:rgba(15,23,42,0.75);border:1px solid rgba(148,163,184,0.14);"
                 ):
-                    ui.icon("schedule", size="14px").style("color:#38bdf8;")
-                    ui.label("LIVE DB").classes("num-mono").style("color:#34d399;font-size:0.76rem;font-weight:700;")
+                    for sym, val, chg, is_up in ticker_items:
+                        with ui.row().classes("items-center gap-1.5 no-wrap"):
+                            ui.label(sym).style("color:#64748b;font-size:0.74rem;font-weight:700;")
+                            ui.label(val).classes("num-mono").style("color:#f1f5f9;font-size:0.76rem;font-weight:700;")
+                            ui.label(chg).classes("num-mono").style(
+                                f"color:{'#34d399' if is_up else '#f87171'};font-size:0.72rem;font-weight:600;"
+                            )
+
+                # 우측: 실시간 데이터 연동 버튼 + 기준일
+                with ui.row().classes("items-center gap-2 no-wrap"):
+                    async def _global_sync():
+                        sync_header_btn.props("loading")
+                        ui.notify("전체 지표(FRED 유동성·금리·주가·PER·공포탐욕) 실시간 수집 중...", type="info")
+                        res = await sync_all_live_data_async()
+                        sync_header_btn.props(remove="loading")
+                        if res.get("ok"):
+                            ui.notify(
+                                f"실시간 연동 완료 ({res['rows_written']}건 갱신): {res['summary']}",
+                                type="positive",
+                            )
+                            ui.navigate.reload()
+                        else:
+                            ui.notify(res.get("message", "연동 실패"), type="warning")
+
+                    sync_header_btn = ui.button("실시간 연동", icon="sync", on_click=_global_sync).props(
+                        "unelevated dense size=sm"
+                    ).style(
+                        "background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;"
+                        "font-weight:700;padding:4px 10px;border-radius:8px;white-space:nowrap;"
+                    )
+                    with ui.row().classes("items-center gap-1.5 px-2.5 py-1 rounded-md gt-xs no-wrap").style(
+                        "background:rgba(255,255,255,0.04);border:1px solid rgba(148,163,184,0.12);"
+                    ):
+                        ui.icon("schedule", size="14px").style("color:#38bdf8;")
+                        ui.label("LIVE DB").classes("num-mono").style("color:#34d399;font-size:0.76rem;font-weight:700;")
+
+            # 모바일/태블릿 전용 (< 1024px): 가로 스크롤 가능한 미니 마켓 티커 바
+            with ui.row().classes("w-full items-center justify-between gap-3 px-2.5 py-1 rounded-lg lt-md no-wrap").style(
+                "background:rgba(15,23,42,0.8);border:1px solid rgba(148,163,184,0.12);overflow-x:auto;"
+            ):
+                for sym, val, chg, is_up in ticker_items:
+                    with ui.row().classes("items-center gap-1 no-wrap").style("flex-shrink:0;"):
+                        ui.label(sym).style("color:#64748b;font-size:0.68rem;font-weight:700;")
+                        ui.label(val).classes("num-mono").style("color:#f1f5f9;font-size:0.71rem;font-weight:700;")
+                        ui.label(chg).classes("num-mono").style(
+                            f"color:{'#34d399' if is_up else '#f87171'};font-size:0.67rem;font-weight:600;"
+                        )
 
 
 # ══════════════════════════════════════════════════════════════

@@ -116,9 +116,9 @@ def create_valuation_page():
         collected_at = meta.get("collected_at", "")
         curr_per_str = kpi["forward_per"]["value"]
 
-        # ── 수동/계산 연동 다이얼로그 ──
+        # ── 수동/계산 연동 다이얼로그 (모바일/PC 반응형 너비) ──
         with ui.dialog() as config_dialog, ui.card().style(
-            f"{CARD_STYLE} min-width:460px;"
+            f"{CARD_STYLE} width: min(92vw, 480px);"
         ):
             ui.label("⚙️ Forward PER 데이터 연동 및 직접 계산").style(
                 "color:#f8fafc;font-size:1.15rem;font-weight:800;margin-bottom:4px;"
@@ -258,7 +258,7 @@ def create_valuation_page():
                     on_click=config_dialog.open,
                 ).props("outline color=info dense").classes("px-3")
 
-        with ui.tabs().classes("w-full") as tabs:
+        with ui.tabs().props("mobile-arrows outside-arrows").classes("w-full") as tabs:
             tab_ov = ui.tab("개요")
             tab_20y = ui.tab("장기 추이 (20년)")
             tab_dist = ui.tab("역사적 분포")
@@ -270,19 +270,19 @@ def create_valuation_page():
             ("평균 대비",          "vs_avg",      True,  "percent",     "#10b981"),
             ("20년 백분위",        "percentile",  False, "leaderboard", "#f59e0b"),
         ]
-        with ui.grid(columns=4).classes("w-full gap-4"):
+        with ui.element("div").classes("kpi-grid-4"):
             for label, key, hl, ic, acc in kpi_meta:
                 d = kpi.get(key, {"value": "-"})
                 kpi_card(label, d["value"], "", "flat", hl, ic, acc)
 
         with ui.tab_panels(tabs, value=tab_ov).classes("w-full"):
             with ui.tab_panel(tab_ov).classes("p-0"):
-                with ui.row().classes("w-full gap-4 items-stretch no-wrap"):
-                    with ui.column().classes("flex-[7]"):
+                with ui.row().classes("w-full gap-4 items-stretch responsive-row"):
+                    with ui.column().classes("flex-[7] min-w-0"):
                         with ui.card().style(CARD_STYLE).classes("w-full h-full"):
                             section_title("나스닥100 Forward PER 추이 (20년)", curr_per_str, "rgba(192,132,252,0.18)", "#c084fc")
                             _per_trend_echart(trend_data)
-                    with ui.column().classes("flex-[3]").style("min-width:295px;"):
+                    with ui.column().classes("flex-[3] min-w-0").style("min-width:260px;"):
                         _per_distribution_panel(dist_data)
 
             with ui.tab_panel(tab_20y).classes("p-0"):
@@ -302,5 +302,5 @@ def create_valuation_page():
                     ]
                     ui.table(columns=cols, rows=analysis_rows, row_key="구간").classes("w-full")
 
-    with ui.column().classes("w-full gap-5 p-6"):
+    with ui.column().classes("w-full gap-5 page-container"):
         render_valuation_view()

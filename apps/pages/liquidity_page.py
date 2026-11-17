@@ -186,7 +186,7 @@ def create_liquidity_page():
     mmf_data = get_mmf_chart_data()
     summary = get_liquidity_summary_table()
 
-    with ui.column().classes("w-full gap-5 p-6"):
+    with ui.column().classes("w-full gap-5 page-container"):
         page_header(
             "시장 유동성 (Liquidity)",
             "Fed 순유동성 (WALCL − TGA − ON RRP) · M2 통화량 · MMF 잔액 · 지급준비금 추적",
@@ -195,7 +195,7 @@ def create_liquidity_page():
             badge_color="#2563eb",
         )
 
-        with ui.tabs().classes("w-full") as tabs:
+        with ui.tabs().props("mobile-arrows outside-arrows").classes("w-full") as tabs:
             tab_ov = ui.tab("개요")
             tab_fed = ui.tab("Fed 순유동성")
             tab_m2 = ui.tab("M2 통화량")
@@ -208,19 +208,19 @@ def create_liquidity_page():
             ("MMF 잔액",     "mmf_balance",       "savings",         "#f59e0b"),
             ("지급준비금",    "reserves",          "account_balance", "#a855f7"),
         ]
-        with ui.grid(columns=4).classes("w-full gap-4"):
+        with ui.element("div").classes("kpi-grid-4"):
             for label, key, ic, acc in kpi_meta:
                 d = kpi.get(key, {"value": "-", "change": "-", "direction": "flat"})
                 kpi_card(label, d["value"], d["change"], d.get("direction", "flat"), d.get("highlight", False), ic, acc)
 
         with ui.tab_panels(tabs, value=tab_ov).classes("w-full"):
             with ui.tab_panel(tab_ov).classes("p-0"):
-                with ui.row().classes("w-full gap-4 items-stretch no-wrap"):
-                    with ui.column().classes("flex-[7]"):
+                with ui.row().classes("w-full gap-4 items-stretch responsive-row"):
+                    with ui.column().classes("flex-[7] min-w-0"):
                         with ui.card().style(CARD_STYLE).classes("w-full h-full"):
                             section_title("Fed 순유동성 추이 (최근 5년)", "$5.81조", "rgba(56,189,248,0.18)", "#38bdf8")
                             _fed_liquidity_echart(fed_data)
-                    with ui.column().classes("flex-[3]").style("min-width:290px;"):
+                    with ui.column().classes("flex-[3] min-w-0").style("min-width:260px;"):
                         _summary_card(summary)
 
             with ui.tab_panel(tab_fed).classes("p-0"):

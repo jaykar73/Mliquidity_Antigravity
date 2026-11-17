@@ -645,6 +645,7 @@ def insert_sample_data(conn: sqlite3.Connection) -> None:
 def init_database(force_reset: bool = False) -> None:
     """DB 파일 생성, 스키마 검증 후 테이블 생성 및 샘플 데이터 삽입."""
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    
     if os.path.exists(DB_PATH):
         conn = sqlite3.connect(DB_PATH)
         valid = _check_schema_valid(conn)

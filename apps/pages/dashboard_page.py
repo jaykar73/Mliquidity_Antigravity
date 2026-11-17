@@ -13,6 +13,8 @@ from apps.funcs.dashboard_func import (
 
 def _nasdaq_echart(data: dict):
     """나스닥100 지수 & 주요 지표 추이 (5년) EChart."""
+    ndx_vals = data.get("nasdaq100") or [12000, 25000]
+    ndx_max = max(26000, int((max(ndx_vals) * 1.06) // 1000 * 1000 + 1000))
     options = {
         "backgroundColor": "transparent",
         "tooltip": {
@@ -20,13 +22,14 @@ def _nasdaq_echart(data: dict):
             "backgroundColor": "rgba(15, 23, 42, 0.94)",
             "borderColor": "rgba(56, 189, 248, 0.3)",
             "textStyle": {"color": "#f8fafc", "fontSize": 12},
+            "confine": True,
         },
         "legend": {
             "data": ["나스닥100", "Fed 순유동성(조$)", "Forward PER(배)"],
-            "top": 4,
-            "textStyle": {"color": "#cbd5e1", "fontSize": 12},
+            "top": 2,
+            "textStyle": {"color": "#cbd5e1", "fontSize": 11},
         },
-        "grid": {"left": "7%", "right": "7%", "top": "15%", "bottom": "10%"},
+        "grid": {"left": "2%", "right": "2%", "top": "16%", "bottom": "4%", "containLabel": True},
         "xAxis": {
             "type": "category",
             "data": data["dates"],
@@ -39,7 +42,7 @@ def _nasdaq_echart(data: dict):
                 "name": "나스닥100",
                 "nameTextStyle": {"color": "#64748b"},
                 "min": 8000,
-                "max": 26000,
+                "max": ndx_max,
                 "axisLabel": {"color": "#94a3b8", "fontSize": 11},
                 "splitLine": {"lineStyle": {"color": "rgba(148,163,184,0.08)"}},
             },
@@ -96,7 +99,7 @@ def _nasdaq_echart(data: dict):
             },
         ],
     }
-    ui.echart(options).classes("w-full").style("height:355px;")
+    ui.echart(options).classes("w-full echart-box").style("height:355px;")
 
 
 def _signal_panel(signal: dict):
@@ -179,7 +182,7 @@ def create_dashboard_page():
     chart_data = get_nasdaq_chart_data("NDX")
     signal = get_investment_signal_score()
 
-    with ui.column().classes("w-full gap-5 p-6"):
+    with ui.column().classes("w-full gap-5 page-container"):
         page_header(
             "나스닥100 / TQQQ 투자 대시보드",
             "연준 유동성 · 컨센서스 EPS · Forward PER · CNN 공포탐욕 · 국채 금리 통합 시그널",
@@ -188,7 +191,7 @@ def create_dashboard_page():
             badge_color="#059669",
         )
 
-        # 6대 KPI 카드 그리드
+        # 6대 KPI 카드 그리드 (PC 6열 / 태블릿 3열 / 스마트폰 2열 자동 전환)
         kpi_meta = [
             ("Fed 순유동성", "fed_net_liquidity", False, "water_drop",      "#38bdf8"),
             ("M2 증가율",    "m2_yoy",            True,  "payments",        "#10b981"),
@@ -197,17 +200,17 @@ def create_dashboard_page():
             ("CNN 공포탐욕", "cnn_fear_greed",    False, "speed",           "#f43f5e"),
             ("미국채 10년",  "treasury_10y",      False, "account_balance", "#f59e0b"),
         ]
-        with ui.grid(columns=6).classes("w-full gap-3.5"):
+        with ui.element("div").classes("kpi-grid-6"):
             for label, key, hl, ic, acc in kpi_meta:
                 d = kpi.get(key, {"value": "-", "change": "-", "direction": "flat"})
                 kpi_card(label, d["value"], d["change"], d.get("direction", "flat"), hl, ic, acc)
 
-        # 하단 차트 + 종합 투자 신호
-        with ui.row().classes("w-full gap-4 items-stretch no-wrap"):
-            with ui.column().classes("flex-[7]"):
+        # 하단 차트 + 종합 투자 신호 (PC: 좌우 7:3 / 스마트폰·태블릿: 상하 100% 스택)
+        with ui.row().classes("w-full gap-4 items-stretch responsive-row"):
+            with ui.column().classes("flex-[7] min-w-0"):
                 with ui.card().style(CARD_STYLE).classes("w-full h-full"):
                     section_title("나스닥100 지수 & 주요 지표 추이 (5년)", "NDX · 유동성 · PER", "rgba(56,189,248,0.15)", "#38bdf8")
                     _nasdaq_echart(chart_data)
 
-            with ui.column().classes("flex-[3]").style("min-width:310px;"):
+            with ui.column().classes("flex-[3] min-w-0").style("min-width:280px;"):
                 _signal_panel(signal)

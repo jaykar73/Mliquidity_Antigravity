@@ -2,6 +2,7 @@
 TQQQ Lab - Configuration & Design Tokens
 """
 import os
+from pathlib import Path
 
 # ── 프로젝트 루트 ──────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -9,6 +10,16 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # ── SQLite DB ──────────────────────────────────────────────────
 DB_DIR = os.path.join(BASE_DIR, "data")
 DB_PATH = os.path.join(DB_DIR, "tqqq_lab.db")
+
+if os.environ.get("VERCEL"):
+    DB_PATH = "/tmp/tqqq_lab.db"
+else:
+    DB_PATH = str(
+        Path(__file__).resolve().parent
+        / "data"
+        / "tqqq_lab.db"
+    )    
+
 
 # ── SQL XML 매퍼 경로 ─────────────────────────────────────────
 SQL_DIR = os.path.join(BASE_DIR, "sqls")

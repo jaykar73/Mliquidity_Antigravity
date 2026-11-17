@@ -123,7 +123,7 @@ def create_earnings_page():
     rev_data = get_eps_revision_chart_data()
     forecast_rows = get_eps_forecast_table()
 
-    with ui.column().classes("w-full gap-5 p-6"):
+    with ui.column().classes("w-full gap-5 page-container"):
         page_header(
             "기업실적 (EPS)",
             "나스닥100 향후 12개월(NTM) 예상 EPS 추이 · 3개월 추정치 수정률(Revision) · 빅테크 실적 기여도",
@@ -132,7 +132,7 @@ def create_earnings_page():
             badge_color="#059669",
         )
 
-        with ui.tabs().classes("w-full") as tabs:
+        with ui.tabs().props("mobile-arrows outside-arrows").classes("w-full") as tabs:
             tab_ov = ui.tab("개요")
             tab_trend = ui.tab("예상 EPS 추이")
             tab_rev = ui.tab("EPS Revision")
@@ -145,20 +145,20 @@ def create_earnings_page():
             ("실적 서프라이즈 (최근)", "eps_surprise",   "stars",        "#a855f7"),
             ("이익 성장률 (예상, YoY)", "eps_growth_yoy","rocket_launch","#f59e0b"),
         ]
-        with ui.grid(columns=4).classes("w-full gap-4"):
+        with ui.element("div").classes("kpi-grid-4"):
             for label, key, ic, acc in kpi_meta:
                 d = kpi.get(key, {"value": "-", "change": "-", "direction": "up"})
                 kpi_card(label, d["value"], d["change"], d.get("direction", "up"), d.get("highlight", False), ic.lower(), acc)
 
         with ui.tab_panels(tabs, value=tab_ov).classes("w-full"):
             with ui.tab_panel(tab_ov).classes("p-0"):
-                with ui.row().classes("w-full gap-4 items-stretch no-wrap"):
-                    with ui.column().classes("flex-[6]"):
+                with ui.row().classes("w-full gap-4 items-stretch responsive-row"):
+                    with ui.column().classes("flex-[6] min-w-0"):
                         with ui.card().style(CARD_STYLE).classes("w-full h-full"):
                             section_title("나스닥100 예상 EPS (향후 12개월)", "1,378 (+2.1%)", "rgba(16,185,129,0.16)", "#34d399")
                             _eps_trend_echart(trend_data)
 
-                    with ui.column().classes("flex-[4]").style("min-width:310px;"):
+                    with ui.column().classes("flex-[4] min-w-0").style("min-width:260px;"):
                         with ui.card().style(CARD_STYLE).classes("w-full h-full"):
                             section_title("EPS Revision 추이", "+4.7%", "rgba(56,189,248,0.16)", "#38bdf8")
                             _eps_revision_echart(rev_data)

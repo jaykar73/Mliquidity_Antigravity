@@ -113,7 +113,7 @@ def create_sentiment_page():
     score = score_data["score"]
     label = score_data["label"]
 
-    with ui.column().classes("w-full gap-5 p-6"):
+    with ui.column().classes("w-full gap-5 page-container"):
         page_header(
             "시장심리 (CNN Fear & Greed)",
             "CNN 공포·탐욕 지수 (0~100) · 7대 핵심 구성요소 · 역발상 매수 타이밍 진단",
@@ -122,7 +122,7 @@ def create_sentiment_page():
             badge_color="#e11d48",
         )
 
-        with ui.tabs().classes("w-full") as tabs:
+        with ui.tabs().props("mobile-arrows outside-arrows").classes("w-full") as tabs:
             tab_ov = ui.tab("개요")
             tab_tr = ui.tab("지수 추이")
             tab_cp = ui.tab("구성요소(7개)")
@@ -130,9 +130,9 @@ def create_sentiment_page():
 
         with ui.tab_panels(tabs, value=tab_ov).classes("w-full"):
             with ui.tab_panel(tab_ov).classes("p-0"):
-                with ui.row().classes("w-full gap-4 items-stretch no-wrap"):
+                with ui.row().classes("w-full gap-4 items-stretch responsive-row"):
                     # 좌측: 게이지 + 최근 3개월 추이
-                    with ui.column().classes("flex-[6] gap-4"):
+                    with ui.column().classes("flex-[6] gap-4 min-w-0"):
                         with ui.card().style(CARD_STYLE).classes("w-full items-center"):
                             section_title("CNN Fear & Greed 종합 게이지", f"{score} / 100", "rgba(244,63,94,0.18)", "#fb7185")
                             _fg_gauge_echart(score)
@@ -146,7 +146,7 @@ def create_sentiment_page():
                             _fg_history_echart(history)
 
                     # 우측: 구성요소 7개 + 해석
-                    with ui.column().classes("flex-[5] gap-4").style("min-width:320px;"):
+                    with ui.column().classes("flex-[5] gap-4 min-w-0").style("min-width:260px;"):
                         with ui.card().style(CARD_STYLE).classes("w-full"):
                             section_title("구성요소 (7개)", "세부 스코어")
                             with ui.column().classes("w-full gap-2 mt-1"):

@@ -17,7 +17,7 @@ def create_reports_page():
     alerts = get_alerts()
     signals = get_asset_signals()
 
-    with ui.column().classes("w-full gap-5 p-6"):
+    with ui.column().classes("w-full gap-5 page-container"):
         page_header(
             "리포트 / 알림 (Reports & Alerts)",
             "일/주간 자동 생성 시장 분석 리포트 · 조건별 투자 신호 실시간 알림 · 매크로 이벤트 캘린더",
@@ -26,7 +26,7 @@ def create_reports_page():
             badge_color="#059669",
         )
 
-        with ui.tabs().classes("w-full") as tabs:
+        with ui.tabs().props("mobile-arrows outside-arrows").classes("w-full") as tabs:
             tab_rep = ui.tab("시장 리포트")
             tab_alt = ui.tab("투자 신호 알림")
             tab_cal = ui.tab("이벤트 캘린더")
@@ -34,9 +34,9 @@ def create_reports_page():
 
         with ui.tab_panels(tabs, value=tab_rep).classes("w-full"):
             with ui.tab_panel(tab_rep).classes("p-0"):
-                with ui.row().classes("w-full gap-4 items-stretch no-wrap"):
+                with ui.row().classes("w-full gap-4 items-stretch responsive-row"):
                     # 좌측: 최근 리포트
-                    with ui.column().classes("flex-1"):
+                    with ui.column().classes("flex-1 min-w-0"):
                         with ui.card().style(CARD_STYLE).classes("w-full h-full justify-between"):
                             with ui.column().classes("w-full gap-3"):
                                 section_title("최근 리포트", f"{len(reports)}건 발행")

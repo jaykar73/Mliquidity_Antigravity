@@ -46,7 +46,7 @@ def create_strategy_page():
     strategies = get_strategies()
     selected_idx = {"value": 0}
 
-    with ui.column().classes("w-full gap-5 p-6"):
+    with ui.column().classes("w-full gap-5 page-container"):
         page_header(
             "투자 전략 (Quant Strategy)",
             "매수·매도 조건부 규칙 설정 · 전략별 추천 포트폴리오 자산 비중 · 리밸런싱 가이드",
@@ -55,7 +55,7 @@ def create_strategy_page():
             badge_color="#059669",
         )
 
-        with ui.tabs().classes("w-full") as tabs:
+        with ui.tabs().props("mobile-arrows outside-arrows").classes("w-full") as tabs:
             tab_ov = ui.tab("전략 개요")
             tab_rl = ui.tab("매수·매도 규칙")
             tab_wt = ui.tab("비중 관리")
@@ -72,9 +72,9 @@ def create_strategy_page():
             rules = curr.get("rules", [])
             alloc = curr.get("allocation", [])
 
-            with ui.row().classes("w-full gap-4 items-stretch no-wrap"):
+            with ui.row().classes("w-full gap-4 items-stretch responsive-row"):
                 # 1. 좌측: 전략 선택
-                with ui.column().classes("flex-[3]").style("min-width:240px;"):
+                with ui.column().classes("flex-[3] min-w-0").style("min-width:220px;"):
                     with ui.card().style(CARD_STYLE).classes("w-full h-full"):
                         section_title("전략 선택", f"{len(strategies)}종")
                         with ui.column().classes("w-full gap-2 mt-1"):
@@ -101,13 +101,13 @@ def create_strategy_page():
                                         ui.label(s.get("profile", "")).style("color:#64748b;font-size:0.72rem;")
 
                 # 2. 중앙: 매수·매도 규칙
-                with ui.column().classes("flex-[5]"):
+                with ui.column().classes("flex-[5] min-w-0"):
                     with ui.card().style(CARD_STYLE).classes("w-full h-full"):
                         section_title("매수·매도 규칙 (예시)", curr["name"], "rgba(56,189,248,0.15)", "#38bdf8")
                         if curr.get("desc"):
                             ui.label(curr["desc"]).style("color:#94a3b8;font-size:0.82rem;margin-bottom:8px;")
 
-                        with ui.row().classes("w-full py-2.5 px-3 rounded-lg").style(
+                        with ui.row().classes("w-full py-2.5 px-3 rounded-lg gt-xs").style(
                             "background:rgba(15,23,42,0.85);border:1px solid rgba(148,163,184,0.12);"
                         ):
                             ui.label("구분").classes("w-28 text-xs font-bold").style("color:#94a3b8;")
@@ -123,7 +123,7 @@ def create_strategy_page():
                         with ui.column().classes("w-full gap-2 mt-2"):
                             for r in rules:
                                 b_bg, b_fg = badge_colors.get(r.get("badge", "blue"), ("rgba(56,189,248,0.18)", "#38bdf8"))
-                                with ui.row().classes("w-full items-center py-3 px-3 rounded-lg").style(
+                                with ui.row().classes("w-full items-center py-3 px-3 rounded-lg strategy-rule-row").style(
                                     "background:rgba(15,23,42,0.45);border:1px solid rgba(148,163,184,0.08);"
                                 ):
                                     with ui.element("div").classes("w-28"):
@@ -131,10 +131,10 @@ def create_strategy_page():
                                             f"background:{b_bg};color:{b_fg};font-weight:700;padding:4px 10px;border-radius:6px;"
                                         )
                                     ui.label(f"• {r['condition']}").classes("flex-1 text-sm font-medium").style("color:#e2e8f0;")
-                                    ui.label(r["action"]).classes("w-36 text-right text-sm font-bold").style(f"color:{b_fg};")
+                                    ui.label(r["action"]).classes("w-36 text-right text-sm font-bold strategy-rule-action").style(f"color:{b_fg};")
 
                 # 3. 우측: 추천 포트폴리오
-                with ui.column().classes("flex-[3]").style("min-width:260px;"):
+                with ui.column().classes("flex-[3] min-w-0").style("min-width:240px;"):
                     with ui.card().style(CARD_STYLE).classes("w-full h-full justify-between"):
                         section_title("추천 포트폴리오", curr.get("profile", "성장형"), "rgba(16,185,129,0.16)", "#34d399")
                         _portfolio_donut_echart(alloc, curr.get("profile", "성장형\n(TQQQ 중심)"))

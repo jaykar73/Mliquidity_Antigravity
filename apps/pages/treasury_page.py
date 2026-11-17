@@ -165,7 +165,7 @@ def create_treasury_page():
     spread = get_treasury_spread()
     yc = get_yield_curve()
 
-    with ui.column().classes("w-full gap-5 p-6"):
+    with ui.column().classes("w-full gap-5 page-container"):
         page_header(
             "미국 국채 금리 (Spot Rate)",
             "미국 재무부 5년·10년·30년 제로쿠폰 스팟 금리 · 수익률 곡선(Yield Curve) · 장단기 금리 스프레드",
@@ -174,13 +174,13 @@ def create_treasury_page():
             badge_color="#2563eb",
         )
 
-        with ui.tabs().classes("w-full") as tabs:
+        with ui.tabs().props("mobile-arrows outside-arrows").classes("w-full") as tabs:
             tab_ov = ui.tab("개요")
             tab_tr = ui.tab("금리 추이")
             tab_yc = ui.tab("수익률 곡선")
             tab_sp = ui.tab("금리 스프레드")
 
-        with ui.grid(columns=5).classes("w-full gap-3.5"):
+        with ui.element("div").classes("kpi-grid-5"):
             kpi_card("5년 스팟", f"{kpi['5y']['rate']:.2f}%", f"{kpi['5y']['change']:+.2f}%p", "down", False, "looks_5", "#38bdf8")
             kpi_card("10년 스팟", f"{kpi['10y']['rate']:.2f}%", f"{kpi['10y']['change']:+.2f}%p", "down", False, " timeline", "#f59e0b")
             kpi_card("30년 스팟", f"{kpi['30y']['rate']:.2f}%", f"{kpi['30y']['change']:+.2f}%p", "down", False, "public", "#c084fc")
@@ -189,12 +189,12 @@ def create_treasury_page():
 
         with ui.tab_panels(tabs, value=tab_ov).classes("w-full"):
             with ui.tab_panel(tab_ov).classes("p-0"):
-                with ui.row().classes("w-full gap-4 items-stretch no-wrap"):
-                    with ui.column().classes("flex-[6]"):
+                with ui.row().classes("w-full gap-4 items-stretch responsive-row"):
+                    with ui.column().classes("flex-[6] min-w-0"):
                         with ui.card().style(CARD_STYLE).classes("w-full h-full"):
                             section_title("국채 스팟 금리 추이 (5년)", "5Y · 10Y · 30Y")
                             _spot_trend_echart(hist)
-                    with ui.column().classes("flex-[4]").style("min-width:300px;"):
+                    with ui.column().classes("flex-[4] min-w-0").style("min-width:260px;"):
                         with ui.card().style(CARD_STYLE).classes("w-full h-full"):
                             section_title("수익률 곡선 (스팟, 현재)", "3M ~ 30Y", "rgba(56,189,248,0.16)", "#38bdf8")
                             _yield_curve_echart(yc)

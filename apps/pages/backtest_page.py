@@ -106,7 +106,7 @@ def create_backtest_page():
     """백테스트 페이지 전체 레이아웃."""
     result = get_backtest_result()
 
-    with ui.column().classes("w-full gap-5 p-6"):
+    with ui.column().classes("w-full gap-5 page-container"):
         page_header(
             "백테스트 (Backtest Simulation)",
             "전략별 과거 누적 수익률 · 연평균 성장률(CAGR) · 최대낙폭(MDD) · 샤프지수 검증",
@@ -115,19 +115,19 @@ def create_backtest_page():
             badge_color="#059669",
         )
 
-        with ui.tabs().classes("w-full") as tabs:
+        with ui.tabs().props("mobile-arrows outside-arrows").classes("w-full") as tabs:
             tab_perf = ui.tab("전략별 성과")
             tab_comp = ui.tab("수익률 비교")
             tab_risk = ui.tab("리스크 분석")
             tab_logs = ui.tab("상세 결과")
 
         with ui.card().style(CARD_STYLE).classes("w-full py-3"):
-            with ui.row().classes("w-full items-center justify-between flex-wrap gap-4"):
-                with ui.row().classes("items-center gap-3"):
+            with ui.row().classes("w-full items-center justify-between flex-wrap gap-3"):
+                with ui.row().classes("items-center gap-2 flex-wrap"):
                     ui.icon("date_range", size="18px").style("color:#38bdf8;")
                     ui.label("백테스트 기간").style("color:#94a3b8;font-size:0.85rem;font-weight:700;")
-                    ui.input(value="2006-01 ~ 2026-10").props("dense outlined dark").classes("w-48 num-mono")
-                with ui.row().classes("items-center gap-4"):
+                    ui.input(value="2006-01 ~ 2026-10").props("dense outlined dark").classes("w-44 num-mono")
+                with ui.row().classes("items-center gap-3 flex-wrap"):
                     ui.label("비교 전략").style("color:#94a3b8;font-size:0.85rem;font-weight:700;")
                     ui.checkbox("단순 보유 (Buy & Hold)", value=True).props("dark dense")
                     ui.checkbox("분할매수 전략", value=True).props("dark dense")
@@ -143,12 +143,12 @@ def create_backtest_page():
 
         with ui.tab_panels(tabs, value=tab_perf).classes("w-full"):
             with ui.tab_panel(tab_perf).classes("p-0"):
-                with ui.row().classes("w-full gap-4 items-stretch no-wrap"):
-                    with ui.column().classes("flex-[6]"):
+                with ui.row().classes("w-full gap-4 items-stretch responsive-row"):
+                    with ui.column().classes("flex-[6] min-w-0"):
                         with ui.card().style(CARD_STYLE).classes("w-full h-full"):
                             section_title("누적 수익률 비교", "+3,790% (분할매수)", "rgba(16,185,129,0.16)", "#34d399")
                             _cum_return_echart(result)
-                    with ui.column().classes("flex-[4]").style("min-width:330px;"):
+                    with ui.column().classes("flex-[4] min-w-0").style("min-width:260px;"):
                         _comparison_table_panel(result["comparison_table"])
 
             with ui.tab_panel(tab_comp).classes("p-0"):
