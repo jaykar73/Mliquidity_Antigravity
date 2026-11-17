@@ -652,7 +652,7 @@ def init_database(force_reset: bool = False) -> None:
         conn.close()
         if not valid or force_reset:
             os.remove(DB_PATH)
-
+    
     conn = sqlite3.connect(DB_PATH)
     conn.executescript(DDL)
     insert_sample_data(conn)
