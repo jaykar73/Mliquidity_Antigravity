@@ -13,12 +13,6 @@ DB_PATH = os.path.join(DB_DIR, "tqqq_lab.db")
 
 if os.environ.get("VERCEL"):
     DB_PATH = "/tmp/tqqq_lab.db"
-else:
-    DB_PATH = str(
-        Path(__file__).resolve().parent
-        / "data"
-        / "tqqq_lab.db"
-    )    
 
 
 # ── SQL XML 매퍼 경로 ─────────────────────────────────────────
