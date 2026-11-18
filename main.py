@@ -705,7 +705,7 @@ def api_forward_pe():
     return get_valuation_kpi()
 
 
-if __name__ in {"__main__", "__mp_main__"}:    
+if __name__ in {"__main__", "__mp_main__"}:
     ui.run(
         title=APP_TITLE,
         host=APP_HOST,
