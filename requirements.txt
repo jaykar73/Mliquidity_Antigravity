@@ -2,3 +2,5 @@ nicegui>=2.0
 mybatis-mapper2sql>=0.1.9
 httpx>=0.25
 apscheduler>=3.10
+fastapi
+uvicorn
