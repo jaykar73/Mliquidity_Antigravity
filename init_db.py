@@ -659,6 +659,6 @@ def init_database(force_reset: bool = False) -> None:
     conn.close()
 
 
-if __name__ == "__main__":
+if __name__ in {"__main__", "__mp_main__"}:
     init_database(force_reset=True)
     print(f"DB initialized at: {DB_PATH}")
