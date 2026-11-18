@@ -9,7 +9,11 @@ import sys
 # 프로젝트 루트를 path 에 추가
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from nicegui import ui, app
+from fastapi import FastAPI
+from nicegui import ui
+
+# Vercel과 Uvicorn이 불러올 ASGI 앱. NiceGUI 앱은 아래에서 마운트한다.
+app = FastAPI()
 
 from conf.config import APP_TITLE, APP_HOST, APP_PORT, APP_RELOAD, COLORS
 from init_db import init_database
@@ -705,12 +709,16 @@ def api_forward_pe():
     return get_valuation_kpi()
 
 
-if __name__ in {"__main__", "__mp_main__"}:
-    ui.run(
-        title=APP_TITLE,
-        host=APP_HOST,
-        port=APP_PORT,
-        reload=APP_RELOAD,
-        dark=True,
-        favicon="📈",
-    )
+ui.run_with(
+    app,
+    title=APP_TITLE,
+    dark=True,
+    favicon="📈",
+)
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run("main:app" if APP_RELOAD else app,
+                host=APP_HOST, port=APP_PORT, reload=APP_RELOAD)
