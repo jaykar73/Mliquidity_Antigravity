@@ -63,11 +63,51 @@ def get_alert_rules() -> list[dict]:
 
 
 def get_asset_signals() -> list[dict]:
+    """실제 DB KPI 기반 4대 자산군(TQQQ, QQQ, 국채, 현금) 동적 투자 신호 산출."""
+    from apps.funcs.dashboard_func import get_dashboard_kpi, get_investment_signal_score
+    kpi = get_dashboard_kpi()
+    sig = get_investment_signal_score()
+    tqqq_score = sig.get("score", 72)
+    fed_str = kpi["fed_net_liquidity"]["value"]
+    fed_chg = kpi["fed_net_liquidity"]["change"]
+    per_str = kpi["forward_per"]["value"]
+    fg_str = kpi["cnn_fear_greed"]["value"].split("/")[0].strip()
+    fg_lbl = kpi["cnn_fear_greed"]["change"]
+    eps_str = kpi["expected_eps"]["value"]
+    eps_chg = kpi["expected_eps"]["change"]
+    us10_str = kpi["treasury_10y"]["value"]
+    us10_chg = kpi["treasury_10y"]["change"]
+
+    tqqq_sig = "분할매수" if tqqq_score >= 65 else ("비중유지" if tqqq_score >= 50 else "비중축소")
+    qqq_score = min(95, max(50, tqqq_score - 3))
+    bond_score = 62 if float(kpi["treasury_10y"].get("raw", 4.9)) >= 4.5 else 52
+    cash_score = max(25, 100 - tqqq_score)
+
     return [
-        {"asset": "TQQQ", "signal": "분할매수", "score": 72, "reason": "유동성 +1.5%, PER 18.07배, 공포탐욕 22"},
-        {"asset": "QQQ",  "signal": "매수/보유", "score": 68, "reason": "예상 EPS 1,378 (+2.1%) 견조한 성장"},
-        {"asset": "국채", "signal": "보유",     "score": 55, "reason": "10Y 스팟 4.90% (-0.04%p) 안정화"},
-        {"asset": "현금", "signal": "일부집행", "score": 40, "reason": "극단적 공포 구간 분할매수 재원 활용"},
+        {
+            "asset": "TQQQ",
+            "signal": tqqq_sig,
+            "score": tqqq_score,
+            "reason": f"유동성 {fed_str}({fed_chg}), Fwd PER {per_str}, 공포탐욕 {fg_str}점({fg_lbl})",
+        },
+        {
+            "asset": "QQQ",
+            "signal": "매수/보유" if qqq_score >= 60 else "중립보유",
+            "score": qqq_score,
+            "reason": f"나스닥100 12M 예상 EPS {eps_str} ({eps_chg}) 이익 체력 견조",
+        },
+        {
+            "asset": "국채",
+            "signal": "분할매수/보유" if bond_score >= 60 else "보유",
+            "score": bond_score,
+            "reason": f"미국채 10Y 스팟 {us10_str} ({us10_chg}) 고금리 캐리 매력",
+        },
+        {
+            "asset": "현금",
+            "signal": "분할집행" if tqqq_score >= 65 else "대기유지",
+            "score": cash_score,
+            "reason": f"{fg_lbl} 구간({fg_str}점) 조정 시 분할매수 재원 활용",
+        },
     ]
 
 

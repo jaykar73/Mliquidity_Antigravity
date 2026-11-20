@@ -8,20 +8,33 @@ load_mapper("sqls/earnings.xml")
 
 
 def get_earnings_kpi() -> dict:
-    """기업실적(EPS) 4대 KPI 조회."""
+    """기업실적(EPS) 4대 KPI 및 실제 변화율 조회."""
     rows = fetch_all(namespace="earnings", sql_id="selectEpsKPI", params={})
     by_code = {r["code"]: float(r["value"]) for r in rows}
 
-    eps_val = int(by_code.get("FORWARD_EPS", 1378))
+    eps_val = int(round(by_code.get("FORWARD_EPS", 1378)))
     rev_3m = by_code.get("EPS_REV_3M", 4.7)
     surp = by_code.get("EPS_SURPRISE", 5.2)
     growth = by_code.get("EPS_GROWTH_YOY", 12.3)
 
+    trend_rows = fetch_all(namespace="earnings", sql_id="selectEpsTrend", params={"horizon": "NTM"})
+    if len(trend_rows) >= 2:
+        curr_e = float(trend_rows[-1]["estimated_eps"])
+        prev_e = float(trend_rows[-2]["estimated_eps"])
+        chg_pct = ((curr_e - prev_e) / prev_e * 100.0) if prev_e else 2.1
+    else:
+        chg_pct = 2.1
+
     return {
-        "expected_eps":    {"value": f"{eps_val:,}",      "change": "+2.1% (3개월)", "direction": "up"},
-        "eps_revision_3m": {"value": f"+{rev_3m:.1f}%",   "change": "상향 조정",      "direction": "up", "highlight": True},
-        "eps_surprise":    {"value": f"+{surp:.1f}%",     "change": "양호",          "direction": "up", "highlight": True},
-        "eps_growth_yoy":  {"value": f"+{growth:.1f}%",   "change": "견조",          "direction": "up", "highlight": True},
+        "expected_eps":    {
+            "value": f"{eps_val:,}",
+            "change": f"{chg_pct:+.1f}% (전월비)",
+            "direction": "up" if chg_pct >= 0 else "down",
+            "raw": eps_val,
+        },
+        "eps_revision_3m": {"value": f"{rev_3m:+.1f}%",   "change": "상향 조정",      "direction": "up", "highlight": True},
+        "eps_surprise":    {"value": f"{surp:+.1f}%",     "change": "양호",          "direction": "up", "highlight": True},
+        "eps_growth_yoy":  {"value": f"{growth:+.1f}%",   "change": "견조",          "direction": "up", "highlight": True},
     }
 
 

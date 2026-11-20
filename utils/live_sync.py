@@ -131,8 +131,23 @@ async def _fetch_cnn_fear_greed(client: httpx.AsyncClient) -> dict | None:
     return None
 
 
+# 나스닥100 상위 10대 핵심 종목 및 가중치
+NDX_TOP10_WEIGHTS = [
+    ("NVDA",  0.089),
+    ("AAPL",  0.087),
+    ("MSFT",  0.081),
+    ("AMZN",  0.054),
+    ("META",  0.050),
+    ("GOOGL", 0.048),
+    ("AVGO",  0.042),
+    ("TSLA",  0.038),
+    ("COST",  0.028),
+    ("NFLX",  0.025),
+]
+
+
 async def _fetch_finviz_metrics(client: httpx.AsyncClient, ticker: str) -> dict:
-    """Finviz에서 종목별 Forward P/E, P/E, EPS next Y, Price 등 추출."""
+    """Finviz에서 종목별 Forward P/E, P/E, EPS next Y, Price 등 정확히 추출 (span 태그 호환)."""
     url = f"https://finviz.com/quote.ashx?t={ticker}"
     out = {"ticker": ticker}
     try:
@@ -146,13 +161,47 @@ async def _fetch_finviz_metrics(client: httpx.AsyncClient, ticker: str) -> dict:
                 ("eps_this_y", "EPS this Y"),
                 ("price", "Price"),
             ]:
-                m = re.search(rf">{re.escape(label)}<.*?><b>([^<]+)</b>", html, re.S)
+                m = re.search(
+                    rf">{re.escape(label)}<.*?<td[^>]*>.*?<b>(?:<span[^>]*>)?([^<]+)",
+                    html,
+                    re.S,
+                )
                 if m:
                     raw = m.group(1).replace("%", "").replace(",", "").strip()
+                    if raw in ("-", "", "N/A"):
+                        continue
                     try:
                         out[key] = float(raw)
                     except ValueError:
                         out[key] = raw
+    except Exception:
+        pass
+    return out
+
+
+async def _fetch_yahoo_qqq_pe_async(client: httpx.AsyncClient) -> dict:
+    """Yahoo Finance quoteSummary에서 QQQ 공식 trailingPE / forwardPE 조회."""
+    out: dict = {}
+    try:
+        await client.get("https://fc.yahoo.com", timeout=5.0)
+        cr = await client.get("https://query1.finance.yahoo.com/v1/test/getcrumb", timeout=5.0)
+        if cr.status_code == 200 and cr.text:
+            crumb = cr.text.strip()
+            url = (
+                f"https://query2.finance.yahoo.com/v10/finance/quoteSummary/QQQ"
+                f"?modules=summaryDetail,defaultKeyStatistics,price&crumb={crumb}"
+            )
+            r = await client.get(url, timeout=6.0)
+            if r.status_code == 200:
+                res = r.json().get("quoteSummary", {}).get("result", [{}])[0]
+                sd = res.get("summaryDetail", {})
+                ks = res.get("defaultKeyStatistics", {})
+                fpe = (sd.get("forwardPE") or ks.get("forwardPE") or {}).get("raw")
+                tpe = (sd.get("trailingPE") or {}).get("raw")
+                if fpe and 8.0 < float(fpe) < 65.0:
+                    out["forward_pe"] = round(float(fpe), 2)
+                if tpe and 8.0 < float(tpe) < 80.0:
+                    out["trailing_pe"] = round(float(tpe), 2)
     except Exception:
         pass
     return out
@@ -194,9 +243,10 @@ async def sync_all_live_data_async() -> dict:
             "Y_US05Y": _fetch_yahoo_chart(client, "%5EFVX", "5y", "1mo"),
             "Y_US10Y": _fetch_yahoo_chart(client, "%5ETNX", "5y", "1mo"),
             "Y_US30Y": _fetch_yahoo_chart(client, "%5ETYX", "5y", "1mo"),
+            "Y_QQQ_PE": _fetch_yahoo_qqq_pe_async(client),
         }
 
-        finviz_tickers = ["QQQ", "NVDA", "AAPL", "MSFT", "AMZN", "META", "GOOGL"]
+        finviz_tickers = ["QQQ"] + [tk for tk, _ in NDX_TOP10_WEIGHTS]
         finviz_tasks = {f"FV_{t}": _fetch_finviz_metrics(client, t) for t in finviz_tickers}
         cnn_task = _fetch_cnn_fear_greed(client)
 
@@ -405,46 +455,81 @@ async def sync_all_live_data_async() -> dict:
                         )
             summary_log.append(f"NDX({latest_ndx_price:,.1f})")
 
-        # ── D. Finviz 기반 Forward PER & 예상 EPS 업데이트 ────────
-        qqq_fv = res_map.get("FV_QQQ")
+        # ── D. Yahoo Finance QQQ + Finviz NDX Top10 기반 Forward PER & 예상 EPS 업데이트 ──
+        y_qqq_pe = res_map.get("Y_QQQ_PE") or {}
+        qqq_fv = res_map.get("FV_QQQ") or {}
         live_fpe = None
         fpe_source = ""
-        if isinstance(qqq_fv, dict) and isinstance(qqq_fv.get("forward_pe"), (int, float)):
+
+        # NDX 상위 10종목 가중 조화평균 Forward P/E 및 Trailing P/E 산출
+        w_fey = 0.0
+        w_fsum = 0.0
+        w_tey = 0.0
+        w_tsum = 0.0
+        for tk, w in NDX_TOP10_WEIGHTS:
+            info = res_map.get(f"FV_{tk}")
+            if isinstance(info, dict):
+                fpe_v = info.get("forward_pe")
+                if isinstance(fpe_v, (int, float)) and 5.0 < float(fpe_v) < 250.0:
+                    w_fey += w * (1.0 / float(fpe_v))
+                    w_fsum += w
+                tpe_v = info.get("pe")
+                if isinstance(tpe_v, (int, float)) and 5.0 < float(tpe_v) < 500.0:
+                    w_tey += w * (1.0 / float(tpe_v))
+                    w_tsum += w
+
+        top10_harm_fpe = (w_fsum / w_fey) if (w_fsum > 0 and w_fey > 0) else None
+        top10_harm_tpe = (w_tsum / w_tey) if (w_tsum > 0 and w_tey > 0) else None
+
+        # 1순위: Yahoo Finance QQQ 공식 forwardPE
+        if isinstance(y_qqq_pe.get("forward_pe"), (int, float)):
+            live_fpe = float(y_qqq_pe["forward_pe"])
+            fpe_source = "Yahoo Finance (QQQ Official)"
+        # 2순위: Finviz QQQ 직접 forward_pe
+        elif isinstance(qqq_fv.get("forward_pe"), (int, float)):
             live_fpe = float(qqq_fv["forward_pe"])
-            fpe_source = "Finviz (QQQ Live)"
-        else:
-            # 빅테크 6종목 가중 조화평균 산출
-            weights = [("NVDA", 0.089), ("AAPL", 0.087), ("MSFT", 0.081), ("AMZN", 0.054), ("META", 0.050), ("GOOGL", 0.048)]
-            w_ey = 0.0
-            w_sum = 0.0
-            for tk, w in weights:
-                info = res_map.get(f"FV_{tk}")
-                if isinstance(info, dict) and isinstance(info.get("forward_pe"), (int, float)):
-                    fpe_v = float(info["forward_pe"])
-                    if 5.0 < fpe_v < 120.0:
-                        w_ey += w * (1.0 / fpe_v)
-                        w_sum += w
-            if w_sum > 0 and w_ey > 0:
-                live_fpe = round((w_sum / w_ey) * 0.92, 2)
-                fpe_source = "Finviz (NDX Constituents Live)"
+            fpe_source = "Finviz (QQQ Official)"
+        # 3순위: Yahoo Finance QQQ 공식 Trailing P/E × NDX Top 10 선행/후행 이익비율
+        elif isinstance(y_qqq_pe.get("trailing_pe"), (int, float)) and top10_harm_fpe and top10_harm_tpe:
+            qqq_tpe = float(y_qqq_pe["trailing_pe"])
+            live_fpe = round(qqq_tpe * (top10_harm_fpe / top10_harm_tpe), 2)
+            fpe_source = "Yahoo QQQ + NDX Top10 Consensus"
+        # 4순위: NDX Top 10 가중 조화평균 Forward P/E
+        elif top10_harm_fpe:
+            live_fpe = round(top10_harm_fpe, 2)
+            fpe_source = "Finviz (NDX Top10 Harmonic Live)"
 
         today_str = datetime.now().strftime("%Y-%m-%d")
+        month_bucket = datetime.now().strftime("%Y-%m-01")
         if live_fpe and 10.0 < live_fpe < 60.0:
-            upsert_obs("FORWARD_PER", today_str, live_fpe, "https://finviz.com/quote.ashx?t=QQQ")
+            # 월별 시계열 정합성을 위해 당월 중복 일별 레코드 정리 후 당월 버킷(YYYY-MM-01)으로 갱신
+            cur.execute(
+                "DELETE FROM indicator_observation WHERE indicator_id = ? AND observation_date >= ?",
+                (code_to_id["FORWARD_PER"], month_bucket),
+            )
+            upsert_obs("FORWARD_PER", month_bucket, live_fpe, "https://finance.yahoo.com/quote/QQQ")
             mark_live("FORWARD_PER", fpe_source)
             summary_log.append(f"Fwd PER({live_fpe}배)")
 
             if latest_ndx_price:
                 live_eps = round(latest_ndx_price / live_fpe, 1)
-                upsert_obs("FORWARD_EPS", today_str, live_eps, "https://finviz.com/quote.ashx?t=QQQ")
+                cur.execute(
+                    "DELETE FROM indicator_observation WHERE indicator_id = ? AND observation_date >= ?",
+                    (code_to_id["FORWARD_EPS"], month_bucket),
+                )
+                upsert_obs("FORWARD_EPS", month_bucket, live_eps, "https://finance.yahoo.com/quote/QQQ")
                 mark_live("FORWARD_EPS", f"{fpe_source} + FRED NDX")
+                cur.execute(
+                    "DELETE FROM earnings_consensus WHERE index_code = 'NDX' AND horizon = 'NTM' AND asof_date >= ?",
+                    (month_bucket,),
+                )
                 cur.execute(
                     """
                     INSERT OR REPLACE INTO earnings_consensus
                         (index_code, asof_date, horizon, estimated_eps, provider, methodology)
                     VALUES ('NDX', ?, 'NTM', ?, ?, 'NDX / Live Forward PER')
                     """,
-                    (today_str, live_eps, fpe_source),
+                    (month_bucket, live_eps, fpe_source),
                 )
                 summary_log.append(f"예상 EPS({live_eps})")
 

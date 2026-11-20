@@ -8,6 +8,8 @@ from apps.funcs.strategy_func import (
     get_strategies,
     get_trade_rules,
     get_portfolio_allocation,
+    get_signal_score,
+    save_strategy,
 )
 
 
@@ -152,7 +154,120 @@ def create_strategy_page():
                                         "color:#f8fafc;font-size:0.9rem;font-weight:800;"
                                     )
 
+        @ui.refreshable
+        def render_weight_tab():
+            curr = strategies[selected_idx["value"]] if strategies else {}
+            alloc = curr.get("allocation", [])
+            sig = get_signal_score()
+            capital_state = {"amount": 5000}
+
+            with ui.row().classes("w-full gap-4 items-stretch responsive-row"):
+                with ui.column().classes("flex-[6] min-w-0"):
+                    with ui.card().style(CARD_STYLE).classes("w-full h-full"):
+                        section_title(f"포트폴리오 자산 배분 계산기 — {curr.get('name', '')}", curr.get("profile", "성장형"))
+                        with ui.row().classes("w-full items-center gap-3 mb-3 flex-wrap"):
+                            ui.label("총 운용 자금 (만원):").style("color:#94a3b8;font-size:0.86rem;font-weight:700;")
+                            cap_input = ui.number(value=5000, min=100, step=500, format="%.0f").props("outlined dark dense").classes("w-40 num-mono")
+                            ui.button("배분 금액 재계산", icon="calculate", on_click=lambda: (capital_state.update(amount=float(cap_input.value or 5000)), alloc_table_view.refresh())).props("unelevated color=primary dense").classes("px-3")
+
+                        @ui.refreshable
+                        def alloc_table_view():
+                            tot = capital_state["amount"]
+                            with ui.column().classes("w-full gap-2.5"):
+                                for a in alloc:
+                                    amt = round(tot * (float(a["ratio"]) / 100.0), 1)
+                                    with ui.row().classes("w-full items-center justify-between p-3 rounded-xl").style(
+                                        "background:rgba(15,23,42,0.55);border:1px solid rgba(148,163,184,0.12);"
+                                    ):
+                                        with ui.row().classes("items-center gap-2.5"):
+                                            ui.element("div").style(f"width:12px;height:12px;border-radius:50%;background:{a['color']};")
+                                            ui.label(a["asset"]).style("color:#f1f5f9;font-size:0.95rem;font-weight:700;width:70px;")
+                                            ui.badge(f"목표 비중 {a['ratio']}%").classes("num-mono").style("background:rgba(56,189,248,0.15);color:#38bdf8;font-weight:700;")
+                                        ui.label(f"{amt:,.0f} 만원").classes("num-mono").style("color:#34d399;font-size:1.0rem;font-weight:800;")
+
+                        alloc_table_view()
+
+                with ui.column().classes("flex-[4] min-w-0"):
+                    with ui.card().style(CARD_STYLE).classes("w-full h-full"):
+                        section_title("5대 퀀트 팩터별 시그널 점수", f"종합 {sig['score']}점", "rgba(16,185,129,0.16)", "#34d399")
+                        with ui.column().classes("w-full gap-3 mt-2"):
+                            for d in sig.get("details", []):
+                                sc = int(d["score"])
+                                clr = "#10b981" if sc >= 70 else ("#38bdf8" if sc >= 55 else "#f59e0b")
+                                with ui.column().classes("w-full gap-1"):
+                                    with ui.row().classes("w-full justify-between"):
+                                        ui.label(d["name"]).style("color:#e2e8f0;font-size:0.84rem;font-weight:600;")
+                                        ui.label(f"{sc} / 100").classes("num-mono").style(f"color:{clr};font-size:0.84rem;font-weight:800;")
+                                    with ui.element("div").classes("w-full").style("height:8px;background:rgba(15,23,42,0.85);border-radius:4px;overflow:hidden;"):
+                                        ui.element("div").style(f"width:{sc}%;height:100%;background:{clr};border-radius:4px;")
+
+        @ui.refreshable
+        def render_simulation_tab():
+            curr = strategies[selected_idx["value"]] if strategies else {}
+            sim_params = {"init_cap": 1000.0, "monthly_add": 100.0, "years": 10, "cagr": 28.0}
+
+            with ui.card().style(CARD_STYLE).classes("w-full"):
+                section_title(f"적립식 분할매수 복리 성장 시뮬레이터 — {curr.get('name', '')}", "Compound Simulator")
+                with ui.row().classes("w-full items-center gap-3 mb-3 flex-wrap"):
+                    in_init = ui.number(label="초기 거치금 (만원)", value=1000, min=0, step=100).props("outlined dark dense").classes("w-36 num-mono")
+                    in_mon = ui.number(label="월 적립금 (만원)", value=100, min=0, step=10).props("outlined dark dense").classes("w-36 num-mono")
+                    in_yrs = ui.number(label="투자 기간 (년)", value=10, min=1, max=25, step=1).props("outlined dark dense").classes("w-32 num-mono")
+                    in_cagr = ui.number(label="기대 연수익률 (%)", value=28.0, min=5.0, max=60.0, step=1.0).props("outlined dark dense").classes("w-36 num-mono")
+
+                    def _run_sim():
+                        sim_params["init_cap"] = float(in_init.value or 1000)
+                        sim_params["monthly_add"] = float(in_mon.value or 100)
+                        sim_params["years"] = max(1, min(25, int(in_yrs.value or 10)))
+                        sim_params["cagr"] = float(in_cagr.value or 28.0)
+                        sim_chart_box.refresh()
+
+                    ui.button("시뮬레이션 계산", icon="play_arrow", on_click=_run_sim).props("unelevated color=primary").classes("px-4")
+
+                @ui.refreshable
+                def sim_chart_box():
+                    yrs = sim_params["years"]
+                    r_yr = sim_params["cagr"] / 100.0
+                    r_mo = (1.0 + r_yr) ** (1.0 / 12.0) - 1.0
+                    x_labels = [f"{y}년차" for y in range(0, yrs + 1)]
+                    principal_arr = []
+                    total_arr = []
+                    bal = sim_params["init_cap"]
+                    prin = sim_params["init_cap"]
+                    principal_arr.append(round(prin, 0))
+                    total_arr.append(round(bal, 0))
+                    for _ in range(1, yrs + 1):
+                        for _ in range(12):
+                            bal = bal * (1.0 + r_mo) + sim_params["monthly_add"]
+                            prin += sim_params["monthly_add"]
+                        principal_arr.append(round(prin, 0))
+                        total_arr.append(round(bal, 0))
+
+                    with ui.row().classes("w-full gap-4 mb-2 flex-wrap"):
+                        ui.badge(f"총 투입 원금: {int(principal_arr[-1]):,} 만원").classes("num-mono").style("background:rgba(148,163,184,0.18);color:#e2e8f0;padding:6px 12px;font-size:0.82rem;font-weight:700;")
+                        ui.badge(f"예상 최종 평가자산: {int(total_arr[-1]):,} 만원").classes("num-mono").style("background:rgba(16,185,129,0.2);color:#34d399;padding:6px 12px;font-size:0.85rem;font-weight:800;")
+
+                    opts = {
+                        "backgroundColor": "transparent",
+                        "tooltip": {"trigger": "axis", "confine": True},
+                        "legend": {"data": ["예상 평가자산(만원)", "누적 투입원금(만원)"], "top": 0, "textStyle": {"color": "#cbd5e1"}},
+                        "grid": {"left": "3%", "right": "3%", "top": "15%", "bottom": "6%", "containLabel": True},
+                        "xAxis": {"type": "category", "data": x_labels, "axisLabel": {"color": "#94a3b8"}},
+                        "yAxis": {"type": "value", "axisLabel": {"color": "#94a3b8"}, "splitLine": {"lineStyle": {"color": "rgba(148,163,184,0.08)"}}},
+                        "series": [
+                            {"name": "예상 평가자산(만원)", "type": "line", "data": total_arr, "smooth": True, "lineStyle": {"color": "#10b981", "width": 3}, "itemStyle": {"color": "#10b981"}, "areaStyle": {"color": "rgba(16,185,129,0.18)"}},
+                            {"name": "누적 투입원금(만원)", "type": "line", "data": principal_arr, "smooth": True, "lineStyle": {"color": "#38bdf8", "width": 2, "type": "dashed"}, "itemStyle": {"color": "#38bdf8"}},
+                        ],
+                    }
+                    ui.echart(opts).classes("w-full echart-box").style("height:290px;")
+
+                sim_chart_box()
+
         with ui.tab_panels(tabs, value=tab_ov).classes("w-full"):
-            for t_obj in (tab_ov, tab_rl, tab_wt, tab_sm):
-                with ui.tab_panel(t_obj).classes("p-0"):
-                    render_main_content()
+            with ui.tab_panel(tab_ov).classes("p-0"):
+                render_main_content()
+            with ui.tab_panel(tab_rl).classes("p-0"):
+                render_main_content()
+            with ui.tab_panel(tab_wt).classes("p-0"):
+                render_weight_tab()
+            with ui.tab_panel(tab_sm).classes("p-0"):
+                render_simulation_tab()

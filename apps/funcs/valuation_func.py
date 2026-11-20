@@ -144,8 +144,50 @@ def get_per_analysis_table() -> list[dict]:
 #  실시간 외부 데이터 수집 및 DB 연동 함수
 # ══════════════════════════════════════════════════════════════
 
+def _extract_finviz_field(html: str, label: str) -> float | None:
+    """Finviz 테이블에서 해당 label 바로 다음 셀의 숫자 추출 (span 색상 태그 호환)."""
+    m = re.search(
+        rf">{re.escape(label)}<.*?<td[^>]*>.*?<b>(?:<span[^>]*>)?([^<]+)",
+        html,
+        re.S,
+    )
+    if m:
+        raw = m.group(1).replace("%", "").replace(",", "").strip()
+        if raw not in ("-", "", "N/A"):
+            try:
+                return float(raw)
+            except ValueError:
+                return None
+    return None
+
+
+def _fetch_finviz_top10_ratios(client: httpx.Client) -> tuple[float | None, float | None]:
+    """Finviz에서 나스닥100 상위 10대 종목의 가중 조화평균 Forward P/E 및 Trailing P/E 산출."""
+    w_fey = 0.0
+    w_fsum = 0.0
+    w_tey = 0.0
+    w_tsum = 0.0
+    for ticker, w in NDX_TOP_WEIGHTS:
+        try:
+            r = client.get(f"https://finviz.com/quote.ashx?t={ticker}", timeout=5.0)
+            if r.status_code == 200:
+                fpe = _extract_finviz_field(r.text, "Forward P/E")
+                tpe = _extract_finviz_field(r.text, "P/E")
+                if fpe and 5.0 < fpe < 250.0:
+                    w_fey += w * (1.0 / fpe)
+                    w_fsum += w
+                if tpe and 5.0 < tpe < 500.0:
+                    w_tey += w * (1.0 / tpe)
+                    w_tsum += w
+        except Exception:
+            continue
+    harm_fpe = (w_fsum / w_fey) if (w_fsum > 0 and w_fey > 0) else None
+    harm_tpe = (w_tsum / w_tey) if (w_tsum > 0 and w_tey > 0) else None
+    return harm_fpe, harm_tpe
+
+
 def _fetch_yahoo_qqq_forward_pe(client: httpx.Client) -> tuple[float | None, float | None, str]:
-    """Yahoo Finance API (Crumb + quoteSummary)를 통해 QQQ/NDX Forward PER 조회."""
+    """Yahoo Finance API (Crumb + quoteSummary)를 통해 QQQ 공식 P/E + NDX Top10 컨센서스 기반 Forward PER 조회."""
     try:
         client.get("https://fc.yahoo.com", timeout=5.0)
         crumb_resp = client.get("https://query1.finance.yahoo.com/v1/test/getcrumb", timeout=5.0)
@@ -163,49 +205,34 @@ def _fetch_yahoo_qqq_forward_pe(client: httpx.Client) -> tuple[float | None, flo
                 ks = res.get("defaultKeyStatistics", {})
                 pr = res.get("price", {})
                 fpe = (sd.get("forwardPE") or ks.get("forwardPE") or {}).get("raw")
+                tpe = (sd.get("trailingPE") or {}).get("raw")
                 price = (pr.get("regularMarketPrice") or {}).get("raw")
                 if fpe and 8.0 < float(fpe) < 65.0:
-                    return round(float(fpe), 2), (float(price) if price else None), "Yahoo Finance (QQQ Live)"
+                    return round(float(fpe), 2), (float(price) if price else None), "Yahoo Finance (QQQ Official)"
+                if tpe and 8.0 < float(tpe) < 80.0:
+                    harm_fpe, harm_tpe = _fetch_finviz_top10_ratios(client)
+                    if harm_fpe and harm_tpe:
+                        implied_fpe = round(float(tpe) * (harm_fpe / harm_tpe), 2)
+                        return implied_fpe, (float(price) if price else None), "Yahoo QQQ + NDX Top10 Consensus"
     except Exception:
         pass
     return None, None, ""
 
 
 def _fetch_finviz_forward_pe(client: httpx.Client) -> tuple[float | None, str]:
-    """Finviz에서 QQQ 또는 NDX 상위 구성종목 Forward P/E 조회 및 조화가중평균 산출."""
-    # 1) QQQ 직접 조회 시도
+    """Finviz에서 QQQ 또는 NDX 상위 10대 구성종목 가중 조화평균 Forward P/E 산출."""
     try:
         r = client.get("https://finviz.com/quote.ashx?t=QQQ", timeout=6.0)
         if r.status_code == 200:
-            m = re.search(r">Forward P/E<.*?><b>([0-9.]+)</b>", r.text, re.S)
-            if m:
-                val = float(m.group(1))
-                if 8.0 < val < 65.0:
-                    return round(val, 2), "Finviz (QQQ Quote)"
+            val = _extract_finviz_field(r.text, "Forward P/E")
+            if val and 8.0 < val < 65.0:
+                return round(val, 2), "Finviz (QQQ Official)"
     except Exception:
         pass
 
-    # 2) NDX 대표 빅테크 종목 Forward P/E 가중 조화평균 산출
-    weighted_ey = 0.0
-    total_w = 0.0
-    for ticker, w in NDX_TOP_WEIGHTS[:6]:
-        try:
-            r = client.get(f"https://finviz.com/quote.ashx?t={ticker}", timeout=5.0)
-            if r.status_code == 200:
-                m = re.search(r">Forward P/E<.*?><b>([0-9.]+)</b>", r.text, re.S)
-                if m:
-                    fpe = float(m.group(1))
-                    if 5.0 < fpe < 120.0:
-                        weighted_ey += w * (1.0 / fpe)
-                        total_w += w
-        except Exception:
-            continue
-
-    if total_w > 0 and weighted_ey > 0:
-        harmonic_fpe = total_w / weighted_ey
-        # 빅테크 상위 6종목 대비 NDX100 전체 밸류에이션 보정계수(0.92) 적용
-        ndx_fpe = round(harmonic_fpe * 0.92, 2)
-        return ndx_fpe, "Finviz (NDX Top Constituents Live)"
+    harm_fpe, _ = _fetch_finviz_top10_ratios(client)
+    if harm_fpe:
+        return round(harm_fpe, 2), "Finviz (NDX Top10 Harmonic Live)"
     return None, ""
 
 
@@ -225,11 +252,19 @@ def _fetch_fred_ndx_price(client: httpx.Client) -> float | None:
 
 
 def _persist_forward_per(per_val: float, provider: str, status: str, source_url: str, ndx_price: float | None = None) -> dict:
-    """수집 또는 계산된 Forward PER 값을 MyBatis XML 매퍼를 통해 SQLite에 저장."""
+    """수집 또는 계산된 Forward PER 값을 MyBatis XML 매퍼를 통해 SQLite에 저장 (당월 버킷 정규화)."""
     started_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    # 최신 시계열 버킷 날짜 조회 (가장 최근 월에 업데이트)
-    latest_row = fetch_one(namespace="valuation", sql_id="selectPerKPI", params={})
-    obs_date = latest_row["observation_date"] if latest_row and latest_row.get("observation_date") else "2026-11-01"
+    obs_date = datetime.now().strftime("%Y-%m-01")
+
+    # 당월 중복 일별 레코드 정리 후 당월 버킷(YYYY-MM-01)으로 갱신
+    execute_query(
+        """
+        DELETE FROM indicator_observation
+        WHERE indicator_id = (SELECT id FROM indicator_catalog WHERE code = 'FORWARD_PER')
+          AND observation_date >= :obs_date
+        """,
+        {"obs_date": obs_date},
+    )
 
     execute_query(namespace="valuation", sql_id="upsertIndicatorValue", params={
         "code": "FORWARD_PER",
@@ -244,9 +279,22 @@ def _persist_forward_per(per_val: float, provider: str, status: str, source_url:
         "license_status": status,
     })
 
+    if not ndx_price:
+        mp_row = fetch_one("SELECT close FROM market_price WHERE symbol = 'NDX' ORDER BY trade_date DESC LIMIT 1")
+        if mp_row and mp_row.get("close"):
+            ndx_price = float(mp_row["close"])
+
     implied_eps = None
     if ndx_price and per_val > 0:
         implied_eps = round(ndx_price / per_val, 1)
+        execute_query(
+            """
+            DELETE FROM indicator_observation
+            WHERE indicator_id = (SELECT id FROM indicator_catalog WHERE code = 'FORWARD_EPS')
+              AND observation_date >= :obs_date
+            """,
+            {"obs_date": obs_date},
+        )
         execute_query(namespace="valuation", sql_id="upsertIndicatorValue", params={
             "code": "FORWARD_EPS",
             "observation_date": obs_date,
@@ -254,6 +302,18 @@ def _persist_forward_per(per_val: float, provider: str, status: str, source_url:
             "value": implied_eps,
             "source_url": source_url,
         })
+        execute_query(
+            "DELETE FROM earnings_consensus WHERE index_code = 'NDX' AND horizon = 'NTM' AND asof_date >= :obs_date",
+            {"obs_date": obs_date},
+        )
+        execute_query(
+            """
+            INSERT OR REPLACE INTO earnings_consensus
+                (index_code, asof_date, horizon, estimated_eps, provider, methodology)
+            VALUES ('NDX', :obs_date, 'NTM', :eps, :provider, 'NDX / Live Forward PER')
+            """,
+            {"obs_date": obs_date, "eps": implied_eps, "provider": provider},
+        )
 
     execute_query(namespace="valuation", sql_id="insertIngestionJob", params={
         "source": provider,

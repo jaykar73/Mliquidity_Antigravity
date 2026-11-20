@@ -70,16 +70,18 @@ def get_portfolio_allocation(strategy_id: int = 1) -> list[dict]:
 
 
 def get_signal_score() -> dict:
+    from apps.funcs.dashboard_func import get_investment_signal_score
+    sig = get_investment_signal_score()
     return {
-        "score": 72,
-        "label": "TQQQ: 분할매수 유리",
-        "details": [
+        "score": sig.get("score", 72),
+        "label": sig.get("recommendation", "TQQQ: 분할매수 유리"),
+        "details": sig.get("details", [
             {"name": "유동성 (30%)",     "score": 78},
             {"name": "실적 EPS (25%)",   "score": 82},
             {"name": "밸류에이션 (20%)", "score": 80},
             {"name": "시장심리 (15%)",   "score": 68},
             {"name": "국채금리 (10%)",   "score": 52},
-        ],
+        ]),
     }
 
 

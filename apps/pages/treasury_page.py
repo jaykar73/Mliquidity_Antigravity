@@ -165,12 +165,17 @@ def create_treasury_page():
     spread = get_treasury_spread()
     yc = get_yield_curve()
 
+    r10_val = kpi["10y"]["rate"]
+    r10_chg = kpi["10y"]["change"]
+    s10_5_val = kpi["10y_5y"]["spread"]
+    s30_10_val = kpi["30y_10y"]["spread"]
+
     with ui.column().classes("w-full gap-5 page-container"):
         page_header(
             "미국 국채 금리 (Spot Rate)",
             "미국 재무부 5년·10년·30년 제로쿠폰 스팟 금리 · 수익률 곡선(Yield Curve) · 장단기 금리 스프레드",
             icon="show_chart",
-            badge_text="10Y 4.90% 안정",
+            badge_text=f"10Y {r10_val:.2f}% ({r10_chg:+.2f}%p)",
             badge_color="#2563eb",
         )
 
@@ -181,11 +186,11 @@ def create_treasury_page():
             tab_sp = ui.tab("금리 스프레드")
 
         with ui.element("div").classes("kpi-grid-5"):
-            kpi_card("5년 스팟", f"{kpi['5y']['rate']:.2f}%", f"{kpi['5y']['change']:+.2f}%p", "down", False, "looks_5", "#38bdf8")
-            kpi_card("10년 스팟", f"{kpi['10y']['rate']:.2f}%", f"{kpi['10y']['change']:+.2f}%p", "down", False, " timeline", "#f59e0b")
-            kpi_card("30년 스팟", f"{kpi['30y']['rate']:.2f}%", f"{kpi['30y']['change']:+.2f}%p", "down", False, "public", "#c084fc")
-            kpi_card("10년 − 5년", f"{kpi['10y_5y']['spread']:+.2f}%p", "정상 스프레드", "up", True, "compare_arrows", "#10b981")
-            kpi_card("30년 − 10년", f"{kpi['30y_10y']['spread']:+.2f}%p", "기간 프리미엄", "up", True, "swap_horiz", "#10b981")
+            kpi_card("5년 스팟", f"{kpi['5y']['rate']:.2f}%", f"{kpi['5y']['change']:+.2f}%p", "down" if kpi["5y"]["change"] <= 0 else "up", False, "looks_5", "#38bdf8")
+            kpi_card("10년 스팟", f"{r10_val:.2f}%", f"{r10_chg:+.2f}%p", "down" if r10_chg <= 0 else "up", False, "timeline", "#f59e0b")
+            kpi_card("30년 스팟", f"{kpi['30y']['rate']:.2f}%", f"{kpi['30y']['change']:+.2f}%p", "down" if kpi["30y"]["change"] <= 0 else "up", False, "public", "#c084fc")
+            kpi_card("10년 − 5년", f"{s10_5_val:+.2f}%p", "정상 스프레드" if s10_5_val >= 0 else "장단기 역전", "up" if s10_5_val >= 0 else "down", True, "compare_arrows", "#10b981")
+            kpi_card("30년 − 10년", f"{s30_10_val:+.2f}%p", "기간 프리미엄", "up" if s30_10_val >= 0 else "down", True, "swap_horiz", "#10b981")
 
         with ui.tab_panels(tabs, value=tab_ov).classes("w-full"):
             with ui.tab_panel(tab_ov).classes("p-0"):
@@ -211,5 +216,5 @@ def create_treasury_page():
 
             with ui.tab_panel(tab_sp).classes("p-0"):
                 with ui.card().style(CARD_STYLE).classes("w-full"):
-                    section_title("장단기 금리 스프레드 (10Y−5Y, 30Y−10Y)", "+0.25%p / +0.47%p", "rgba(16,185,129,0.16)", "#34d399")
+                    section_title("장단기 금리 스프레드 (10Y−5Y, 30Y−10Y)", f"{s10_5_val:+.2f}%p / {s30_10_val:+.2f}%p", "rgba(16,185,129,0.16)", "#34d399")
                     _spread_echart(spread)

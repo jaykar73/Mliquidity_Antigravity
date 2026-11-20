@@ -213,32 +213,37 @@ def create_liquidity_page():
                 d = kpi.get(key, {"value": "-", "change": "-", "direction": "flat"})
                 kpi_card(label, d["value"], d["change"], d.get("direction", "flat"), d.get("highlight", False), ic, acc)
 
+        fed_val = kpi["fed_net_liquidity"]["value"]
+        m2_val = kpi["m2_yoy"]["value"]
+        mmf_val = kpi["mmf_balance"]["value"]
+        res_val = kpi["reserves"]["value"]
+
         with ui.tab_panels(tabs, value=tab_ov).classes("w-full"):
             with ui.tab_panel(tab_ov).classes("p-0"):
                 with ui.row().classes("w-full gap-4 items-stretch responsive-row"):
                     with ui.column().classes("flex-[7] min-w-0"):
                         with ui.card().style(CARD_STYLE).classes("w-full h-full"):
-                            section_title("Fed 순유동성 추이 (최근 5년)", "$5.81조", "rgba(56,189,248,0.18)", "#38bdf8")
+                            section_title("Fed 순유동성 추이 (최근 5년)", fed_val, "rgba(56,189,248,0.18)", "#38bdf8")
                             _fed_liquidity_echart(fed_data)
                     with ui.column().classes("flex-[3] min-w-0").style("min-width:260px;"):
                         _summary_card(summary)
 
             with ui.tab_panel(tab_fed).classes("p-0"):
                 with ui.card().style(CARD_STYLE).classes("w-full"):
-                    section_title("Fed 순유동성 구성요소 (WALCL − TGA − ON RRP)", "$5.81조")
+                    section_title("Fed 순유동성 구성요소 (WALCL − TGA − ON RRP)", fed_val)
                     _fed_liquidity_echart(fed_data)
 
             with ui.tab_panel(tab_m2).classes("p-0"):
                 with ui.card().style(CARD_STYLE).classes("w-full"):
-                    section_title("M2 통화량 & YoY 증가율 추이", "+4.3% YoY", "rgba(16,185,129,0.16)", "#34d399")
+                    section_title("M2 통화량 & YoY 증가율 추이", f"{m2_val} YoY", "rgba(16,185,129,0.16)", "#34d399")
                     _m2_echart(m2_data)
 
             with ui.tab_panel(tab_mmf).classes("p-0"):
                 with ui.card().style(CARD_STYLE).classes("w-full"):
-                    section_title("MMF 머니마켓펀드 잔액 추이", "$6.74조", "rgba(245,158,11,0.16)", "#fbbf24")
+                    section_title("MMF 머니마켓펀드 잔액 추이", mmf_val, "rgba(245,158,11,0.16)", "#fbbf24")
                     _mmf_echart(mmf_data, "mmf")
 
             with ui.tab_panel(tab_res).classes("p-0"):
                 with ui.card().style(CARD_STYLE).classes("w-full"):
-                    section_title("연준 지급준비금 (WRESBAL) 추이", "$3.33조", "rgba(168,85,247,0.16)", "#c084fc")
+                    section_title("연준 지급준비금 (WRESBAL) 추이", res_val, "rgba(168,85,247,0.16)", "#c084fc")
                     _mmf_echart(mmf_data, "res")

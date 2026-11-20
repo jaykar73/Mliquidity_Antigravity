@@ -168,12 +168,18 @@ def create_sentiment_page():
                                         )
 
                         with ui.card().style(CARD_STYLE).classes("w-full"):
+                            from apps.funcs.valuation_func import get_valuation_kpi
+                            val_kpi = get_valuation_kpi()
+                            curr_per_str = val_kpi["forward_per"]["value"]
+                            prev_score = score_data.get("prev_score", 28)
+                            diff_score = score - prev_score
+                            diff_txt = f"{diff_score:+d}p"
                             section_title("시장 심리 해석", "역발상 관점", "rgba(16,185,129,0.16)", "#34d399")
                             bullets = [
-                                ("#f43f5e", f"현재 {score}점: 극단적 공포 구간 진입"),
-                                ("#f59e0b", "최근 하락세 지속 (1주 전 28점 대비 -6p)"),
-                                ("#38bdf8", "역사적 과매도 저점권으로 기술적 반등 가능성 높음"),
-                                ("#10b981", "밸류에이션(PER 18.07배)과 결합 시 분할매수 적기"),
+                                ("#f43f5e", f"현재 {score}점: {label} 구간 위치"),
+                                ("#f59e0b", f"최근 심리 변화 (1주 전 {prev_score}점 대비 {diff_txt})"),
+                                ("#38bdf8", "역사적 과매도 저점권으로 기술적 반등 가능성 높음" if score <= 35 else "단기 심리 회복 및 수급 유입 구간"),
+                                ("#10b981", f"밸류에이션(Forward PER {curr_per_str})과 결합 시 분할매수 유리"),
                             ]
                             with ui.column().classes("w-full gap-2 mt-1"):
                                 for dot_c, txt in bullets:

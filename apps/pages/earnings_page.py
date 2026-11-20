@@ -14,6 +14,9 @@ from apps.funcs.earnings_func import (
 
 def _eps_trend_echart(data: dict):
     """나스닥100 예상 EPS (향후 12개월) EChart."""
+    vals = data.get("eps_estimate") or [800, 1400]
+    y_min = max(0, int((min(vals) * 0.92) // 50 * 50))
+    y_max = int((max(vals) * 1.06) // 50 * 50 + 50)
     options = {
         "backgroundColor": "transparent",
         "tooltip": {
@@ -21,8 +24,9 @@ def _eps_trend_echart(data: dict):
             "backgroundColor": "rgba(15, 23, 42, 0.94)",
             "borderColor": "rgba(16, 185, 129, 0.3)",
             "textStyle": {"color": "#f8fafc"},
+            "confine": True,
         },
-        "grid": {"left": "8%", "right": "4%", "top": "12%", "bottom": "10%"},
+        "grid": {"left": "3%", "right": "3%", "top": "12%", "bottom": "6%", "containLabel": True},
         "xAxis": {
             "type": "category",
             "data": data["dates"],
@@ -31,8 +35,8 @@ def _eps_trend_echart(data: dict):
         },
         "yAxis": {
             "type": "value",
-            "min": 800,
-            "max": 1450,
+            "min": y_min,
+            "max": y_max,
             "axisLabel": {"color": "#94a3b8"},
             "splitLine": {"lineStyle": {"color": "rgba(148,163,184,0.08)"}},
         },
@@ -150,27 +154,31 @@ def create_earnings_page():
                 d = kpi.get(key, {"value": "-", "change": "-", "direction": "up"})
                 kpi_card(label, d["value"], d["change"], d.get("direction", "up"), d.get("highlight", False), ic.lower(), acc)
 
+        eps_val_str = kpi["expected_eps"]["value"]
+        eps_chg_str = kpi["expected_eps"]["change"]
+        rev_val_str = kpi["eps_revision_3m"]["value"]
+
         with ui.tab_panels(tabs, value=tab_ov).classes("w-full"):
             with ui.tab_panel(tab_ov).classes("p-0"):
                 with ui.row().classes("w-full gap-4 items-stretch responsive-row"):
                     with ui.column().classes("flex-[6] min-w-0"):
                         with ui.card().style(CARD_STYLE).classes("w-full h-full"):
-                            section_title("나스닥100 예상 EPS (향후 12개월)", "1,378 (+2.1%)", "rgba(16,185,129,0.16)", "#34d399")
+                            section_title("나스닥100 예상 EPS (향후 12개월)", f"{eps_val_str} ({eps_chg_str})", "rgba(16,185,129,0.16)", "#34d399")
                             _eps_trend_echart(trend_data)
 
                     with ui.column().classes("flex-[4] min-w-0").style("min-width:260px;"):
                         with ui.card().style(CARD_STYLE).classes("w-full h-full"):
-                            section_title("EPS Revision 추이", "+4.7%", "rgba(56,189,248,0.16)", "#38bdf8")
+                            section_title("EPS Revision 추이", rev_val_str, "rgba(56,189,248,0.16)", "#38bdf8")
                             _eps_revision_echart(rev_data)
 
             with ui.tab_panel(tab_trend).classes("p-0"):
                 with ui.card().style(CARD_STYLE).classes("w-full"):
-                    section_title("나스닥100 예상 EPS 장기 시계열 (NTM)", "1,378 pt", "rgba(16,185,129,0.16)", "#34d399")
+                    section_title("나스닥100 예상 EPS 장기 시계열 (NTM)", f"{eps_val_str} pt", "rgba(16,185,129,0.16)", "#34d399")
                     _eps_trend_echart(trend_data)
 
             with ui.tab_panel(tab_rev).classes("p-0"):
                 with ui.card().style(CARD_STYLE).classes("w-full"):
-                    section_title("월별 EPS 추정치 상향/하향 Revision", "+4.7%")
+                    section_title("월별 EPS 추정치 상향/하향 Revision", rev_val_str)
                     _eps_revision_echart(rev_data)
 
             for t_obj in (tab_sec, tab_top):

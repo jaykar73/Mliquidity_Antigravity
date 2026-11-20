@@ -187,8 +187,8 @@ def create_dashboard_page():
             "나스닥100 / TQQQ 투자 대시보드",
             "연준 유동성 · 컨센서스 EPS · Forward PER · CNN 공포탐욕 · 국채 금리 통합 시그널",
             icon="space_dashboard",
-            badge_text="TQQQ 분할매수 유리",
-            badge_color="#059669",
+            badge_text=f"{signal.get('recommendation', 'TQQQ 분할매수 유리')} ({signal.get('score', 72)}점)",
+            badge_color="#059669" if signal.get("score", 72) >= 65 else "#2563eb",
         )
 
         # 6대 KPI 카드 그리드 (PC 6열 / 태블릿 3열 / 스마트폰 2열 자동 전환)

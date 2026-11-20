@@ -521,7 +521,10 @@ def create_layout(current_path: str = "/"):
                                     f"font-size:0.69rem;color:{sub_color};margin-top:2px;line-height:1.1;"
                                 )
 
-            # 사이드바 하단 미니 시그널 상태 카드
+    # 사이드바 하단 미니 시그널 상태 카드 (실시간 동적 점수 연동)
+            live_sig = get_investment_signal_score()
+            sig_score = live_sig.get("score", 72)
+            sig_rec = live_sig.get("recommendation", "TQQQ: 분할매수 유리")
             with ui.column().classes("w-full px-3 pb-4"):
                 with ui.element("div").style(
                     "background:linear-gradient(135deg,rgba(16,185,129,0.12) 0%,rgba(15,23,42,0.9) 100%);"
@@ -529,11 +532,11 @@ def create_layout(current_path: str = "/"):
                 ):
                     with ui.row().classes("w-full items-center justify-between mb-1"):
                         ui.label("종합 투자 시그널").style("font-size:0.72rem;color:#94a3b8;font-weight:600;")
-                        ui.badge("72 / 100").style(
+                        ui.badge(f"{sig_score} / 100").style(
                             "background:#10b981;color:#fff;font-size:0.68rem;font-weight:800;padding:2px 7px;"
                         )
-                    ui.label("TQQQ 분할매수 유리").style(
-                        "font-size:0.86rem;font-weight:800;color:#34d399;"
+                    ui.label(sig_rec).style(
+                        "font-size:0.84rem;font-weight:800;color:#34d399;"
                     )
                     ui.label(f"PER {per_str} · 공포탐욕 {fg_str}").style(
                         "font-size:0.7rem;color:#64748b;margin-top:2px;"
